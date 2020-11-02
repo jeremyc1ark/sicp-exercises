@@ -59,7 +59,7 @@ n.  For example, `(k n)' computes 5n^2.
       )
     (test-it-out-iter
      func
-     (list 0 1 2 3 4))
+     (list 1 2 3 4))
     )
 
   (define (f n) (A 0 n))
@@ -79,10 +79,10 @@ n.  For example, `(k n)' computes 5n^2.
 #+end_src
 
 #+RESULTS:
-- (0 2 4 6 8)
-- (0 2 4 8 16)
-- (0 2 4 16 65536)
-- (0 5 20 45 80)
+- (2 4 6 8)
+- (2 4 8 16)
+- (2 4 16 65536)
+- (5 20 45 80)
 
 From their function definitions, in addition to their output, we
 can deduce that:
@@ -96,7 +96,7 @@ k(x) = 5x^2
 For `h', we might need to do a bit more digging. The answer is
 not immediately clear, however it is clear that the answers grow
 extremely quickly. I originally tried testing each function from
-0-10, but at 5, `h' returns an absolutely monstrous number. 0-4
+1-10, but at 5, `h' returns an absolutely monstrous number. 1-4
 is good enough for our purposes.
 
 #+begin_src scheme :noweb yes :results output
@@ -185,4 +185,74 @@ is good enough for our purposes.
 
 I used Racket's built-in `trace' function to track the calls to
 `A'. This should give us some insight as to what is going on
-behind the scenes. 
+behind the scenes. The key when looking at this traceback is to
+look at the atoms that will be passed to an `A' function that is
+not surrounded by more than one `A' function. So, we are interested
+in lines like this:
+
+#+header: :eval "no"
+#+begin_src scheme
+  (A 1 16)
+#+end_src
+
+For now, we are not interested in lines like this:
+
+#+header: :eval "no"
+#+begin_src scheme
+  (A 1 (A 1 (A 1 (A 1 (A 15)))))
+#+end_src
+
+There are two occurences of these lines. The first is the initial
+call to `h', which expands to a call to `A':
+
+#+header: :eval "no"
+#+begin_src scheme
+  (A 2 4)
+#+end_src
+
+The second line, which is a result of the first, is:
+
+#+header: :eval "no"
+#+begin_src scheme
+  (A 1 16)
+#+end_src
+
+The third, which is a result of the second, is:
+
+#+header: :eval "no"
+#+begin_src scheme
+  (A 0 32768) -> 65536
+#+end_src
+
+Now, things clear up. `x' (`A''s 1st parameter) decrements each
+time, and `y' (`A''s 2nd parameter) squares the highest exponent
+for a total of `y' - 1 times. So, `h' could be defined as:
+
+#+begin_src scheme :results list
+  (define (h-iter counter)
+    (if (= counter 0)
+        2
+        (expt 2 (h-iter (- counter 1)))
+    )
+  )
+
+  (define (h n)
+    (h-iter (- n 1))
+    )
+
+  (list
+   (h 1)
+   (h 2)
+   (h 3)
+   (h 4)
+   )
+#+end_src
+
+#+RESULTS:
+- 2
+- 4
+- 16
+- 65536
+
+These are the same results we got from the original
+implementation of `h', so we know it's legit.
