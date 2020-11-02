@@ -1,0 +1,295 @@
+*Exercise 1.7:* The `good-enough?' test used in computing square
+roots will not be very effective for finding the square roots of
+very small numbers.  Also, in real computers, arithmetic operations
+are almost always performed with limited precision.  This makes
+our test inadequate for very large numbers.  Explain these
+statements, with examples showing how the test fails for small and
+large numbers.  An alternative strategy for implementing
+`good-enough?' is to watch how `guess' changes from one iteration
+to the next and to stop when the change is a very small fraction
+of the guess.  Design a square-root procedure that uses this kind
+of end test.  Does this work better for small and large numbers?
+
+/The `good-enough?' test used in computing square
+roots will not be very effective for finding the square roots of
+very small numbers./
+
+`good-enough?' and its helper function, `square' are defined as: 
+
+#+name: src-block
+#+begin_src scheme :results silent
+  (define (good-enough? guess x)
+    (< (abs (- (sqr guess) x)) 0.001)
+    )
+#+end_src
+
+The square root of 2.5e-6 is ~0.0015811 rounded to 5 significant
+figures. Let's say that `x' is 2.5e-6 and `guess' is 0.0013: 
+
+#+begin_src scheme :noweb yes
+  <<src-block>>
+  (good-enough? 0.0013 2.5e-6)
+#+end_src
+
+#+RESULTS:
+: #t
+
+Our program seems to think that 0.0013 is a good enough square
+root of 2.5e-6. But, the square of 0.0013 is 1.69e-6. As a
+percentage of 2.5e-6, 1.69e-6 is ~30% smaller. To put that in
+perspective, calculating 0.0013 as the square root of 2.5e-6
+would be like calculating ~4.18 as that square root of 25. That
+is a very innacurate calculation, and it only gets worse as the
+numbers we want to square get smaller.
+
+/Also, in real computers, arithmetic operations are almost always
+performed with limited precision. This makes our test inadequate
+for large numbers./
+
+Let's try calculating the square of a large number and then
+passing the large number into `is-good-enough?' to see if it
+passes:
+
+#+begin_src scheme :noweb yes :results list
+  <<src-block>>
+  (define x 99999993339933392293393994495)
+  (define sqrt-x (sqrt x))
+  (define sqr-sqrt-x (sqr sqrt-x))
+  (define error-margin (abs (- sqr-sqrt-x x)))
+  (define error-margin-percent (/ error-margin x))
+  (define is-sqrt-x-good-enough? (good-enough? sqrt-x x))
+
+  (list
+   "Original number x:" x
+   "Calculated square root of x:" sqrt-x
+   "Square of the above value:" sqr-sqrt-x
+   "Calculated difference between x and the above value:" error-margin
+   "The above value as a percentage of x:" error-margin-percent
+   ;; is-sqrt-x-good-enough?
+   )
+#+end_src
+
+#+RESULTS:
+- Original number x:
+- 99999993339933392293393994495
+- Calculated square root of x:
+- 316227755486347.8
+- Square of the above value:
+- 9.999999333993338e+28
+- Calculated difference between x and the above value:
+- 17592186044416.0
+- The above value as a percentage of x:
+- 1.7592187216067386e-16
+
+The square of the calculated square root is off from the original
+number by ~1.76e+13. This is a large number, but relative to the
+original number, a 1.76e+13 error is ~175.9e-16% which is
+negligable. For most purposes, our calculated square root is a
+very good approximation. However, it does not pass the
+`good-enough?' test because the square of the approximation
+differs from the original number by more than 0.001. But, it gets
+even worse. If we used the current `good-enough' test in
+`sqrt-iter' for a very large number, we may never get a result
+because the interpreter rounds decimals. Let's rewrite sqrt-iter
+in a way that makes this problem more clear:
+
+#+name: helpers
+#+begin_src scheme :results silent
+  (define (average x y)
+    (/ (+ x y) 2))
+
+  (define (improve guess x)
+    (average guess (/ x guess)))
+
+  (define (remove-last lst)
+    (if (null? (cdr lst))
+        '()
+        (cons (car lst) (remove-last (cdr lst)))))
+
+#+end_src
+
+#+begin_src scheme :noweb yes :results list
+  <<src-block>>
+  <<helpers>>
+  (define (sqrt-iter guess x counter past-five-guesses)
+    (cond
+     ((= counter 10000) (cons "Maximum recursion depth reached. Past five guesses below:" past-five-guesses))
+     ((good-enough? guess x) (cons "Square root of x is below:" guess))
+     (else
+      (sqrt-iter
+      (improve guess x)
+      x
+      (+ 1 counter)
+      (if (< (length past-five-guesses) 5)
+          (cons guess past-five-guesses)
+          (cons guess (remove-last past-five-guesses)))
+      ))
+     )
+    )
+
+  (sqrt-iter 316227755486347.8  99999993339933392293393994495 0 '())
+#+end_src
+
+#+RESULTS:
+- Maximum recursion depth reached. Past five guesses below:
+- 316227755486347.9
+- 316227755486347.9
+- 316227755486347.9
+- 316227755486347.9
+- 316227755486347.9
+
+Our newly-defined `sqrt-iter' function has a maximum recursion
+depth of 10000. It it finds a number that passes the
+`good-enough?' test, it will return that number. If it reaches
+the maximum recursion depth without finding a number that passes
+the `good-enough?' test, it will return a list of the previous
+five guesses for the square root of x. In this case, we can see
+that the maximum recursion depth was reached, meaning that
+`sqrt-iter' has tried to improve `guess' 10000 times without
+success. When we look at the previous five guesses, the reason
+becomes clear. When `improve' takes 316227755486347.9 as `guess'
+and our original number as `x', its operations return the same
+value as `guess':
+
+
+#+name: long-vars
+#+begin_src scheme :results silent :noweb yes
+  <<helpers>>
+  (define x 99999993339933392293393994495)
+  (define original-guess 316227755486347.9)
+  (define improved-guess (improve original-guess x))
+#+end_src
+
+#+begin_src scheme :noweb yes
+  <<helpers>>
+  <<long-vars>>
+
+  (= original-guess improved-guess)
+#+end_src
+
+#+RESULTS:
+: #t
+
+Without a maximum recursion depth, `sqrt-iter' would continue
+indefinitely because it would pass its own arguments to itself.
+In other words, the function would not get closer to its
+terminating condition. But if `improve' returns its `guess'
+parameter, this suggests that `guess' is the exact square root of
+the original number. Let's see if this is true: 
+
+#+begin_src scheme :noweb yes
+  <<long-vars>>
+
+  (= (abs (- (sqr improved-guess) x)) 0)
+#+end_src
+
+#+RESULTS:
+: #f
+
+It is not. This means that `improved-guess' is not exact, which
+means that `improve' did not do its job. Let's take a look at
+`improve' again:
+
+#+header: :eval "no"
+#+begin_src scheme
+  (define (improve guess x)
+    (average guess (/ x guess)))
+#+end_src
+
+Improve finds the average of the guess and the original number
+divided by the guess. First, let's see what the the original
+number divided by the guess is:
+
+#+begin_src scheme :noweb yes
+  <<long-vars>>
+
+  (/ x original-guess)
+#+end_src
+
+#+RESULTS:
+: 316227755486347.8
+
+`average' adds this number and the original guess and divides by
+2. Let's try that out:
+
+#+begin_src scheme :noweb yes
+  <<helpers>>
+  <<long-vars>>
+
+  (/ (+ original-guess (/ x original-guess)) 2)
+#+end_src
+
+#+RESULTS:
+: 316227755486347.9
+
+But wait! Remember that `original-guess' and `(/ x
+original-guess)' are not the same number. They have the same
+whole numbers, but `original-guess' ends in .9 and `(/ x
+original-guess)' ends in .8. If the average of two numbers were
+equal to one of the numbers it was averaging, then the other
+number would have to be the same. In other words, if
+(a + b) / 2 = b, a must be equal to b. So, the number the
+interpreter gave is not correct. So, did the interpreter make a
+mistake? Not exactly. To strike a balance between computational
+efficiency and accuracy, most interpreters round very large or
+very small numbers. This is an example of the Scheme interpreter
+doing just that. If interpreters did not round, then any
+operations with irrational numbers would be impossible. For
+example, we cannot calculate the exact circumference of a circle
+because pi is irrational, so the interpreter rounds pi to a
+reasonable decimal place. Most of the time, our computations do
+not need to be exact. They only need to be good enough. As we
+discussed earlier, our calculation for the square root of x is
+good enough because its error as a percentage of x is negligable.
+This transitions perfectly to the final part of the exercise.
+
+/An alternative strategy for implementing
+`good-enough?' is to watch how `guess' changes from one iteration
+to the next and to stop when the change is a very small fraction
+of the guess.  Design a square-root procedure that uses this kind
+of end test.  Does this work better for small and large numbers?/
+
+Let's give it a shot!
+
+#+begin_src scheme :noweb yes
+  <<helpers>>
+  <<long-vars>>
+
+  (define (good-enough? guess x)
+    (let ((margin-of-error 0.001))
+       (< (/ (abs (- (sqr guess) x)) x) margin-of-error))
+    )
+
+  (define (sqrt-iter guess x prev-guess)
+    (cond
+     ((= guess prev-guess) guess)
+     ((good-enough? guess x) guess)
+     (else (sqrt-iter (improve guess x) x guess))
+     )
+    )
+
+  (exact->inexact (sqrt-iter 30000000000000 x 0))
+#+end_src
+
+#+RESULTS:
+: 316231002047203.3
+
+This new calculation, while not quite as accurate as the one
+calculed by the Python interpreter, still has a margin of error
+of less than 0.1% as a percentage of the original number. If we
+wanted, we could decrease the margin of error to get even more
+accurate numbers. However, if the margin of error is /too/ small,
+we could run into the same issue as before where the
+interpreter's rounding causes `improve' to return an equivalent
+value to `guess', which would not bring the cycle closer to its
+terminating condition. For this reason, I implemented a safeguard
+into `sqrt-iter'. Every cycle of recursion, `sqrt-iter' asks if
+the current guess is the same as it was last time. If it is, it
+simply returns `guess', if not, and if `guess' does not pass the
+`good-enough?' test, then the current value of `guess' gets
+passed to `sqrt-iter' in the position of `prev-guess' and an
+expression to find an improvement of `guess' gets passed to the
+position of `guess'. This way, if `improve' ever returns the same
+value it recieved for `guess', `sqrt-iter' will terminate almost
+immediately without either wasting time passing the same value
+for `guess' or reaching the interpreter's RAM limit.

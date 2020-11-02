@@ -1,0 +1,85 @@
+*Exercise 1.4:* Observe that our model of evaluation allows for
+combinations whose operators are compound expressions.  Use this
+observation to describe the behavior of the following procedure:
+
+#+name: src-block
+#+header: :eval "no"
+#+begin_src scheme
+(define (a-plus-abs-b a b)
+  ((if (> b 0) + -) a b))
+#+end_src
+
+`a-plus-abs-b' returns what the name suggests: the positional `a'
+argument plus the absolute value of the positional `b' argument. However, it
+does not determine the absolute value of `b' directly. Instead,
+it determines the operator that should be used to combine the two
+integers based on the sign of `b'. It does this using the
+applicative-order `if' statement:
+
+#+header: :eval "no"
+#+begin_src scheme
+(if (> b 0) + -)
+#+end_src
+
+This is like saying: "If `b' is greater than 0 (positive), return
+`+', otherwise (meaning `b' is negative or 0), return `-'."
+
+So, the expression,
+
+#+header: :eval "no"
+#+begin_src scheme
+(a-plus-abs-b 8 -70)
+#+end_src
+
+evaluates to,
+
+#+header: :eval "no"
+#+begin_src scheme
+  ((if (> -70 0) + -) 8 -70)
+#+end_src
+
+which evaluates to,
+
+#+header: :eval "no"
+#+begin_src scheme
+  ((if #f + -) 8 -70)
+#+end_src
+
+which evaluates to,
+
+#+header: :eval "no"
+#+begin_src scheme
+  (- 8 -70)
+#+end_src
+
+which finally evaluates to 78. In practice, `a-plus-abs-b'
+performs the same operation as
+
+#+header: :eval "no"
+#+begin_src scheme
+  (define (a-plus-abs-b* a b)
+    (+ a (abs b))
+    )
+#+end_src
+
+However, `a-plus-abs-b*' executes by operating on the arguments,
+while `a-plus-abs-b' executes by operating on the /operators/.
+This introduces a very powerful concept, which is that of
+functional programming. Functional programming is the heart and
+soul of Lisp.
+
+Let's see `a-plus-abs-b' in action:
+
+#+begin_src scheme :noweb yes :results list
+  <<src-block>>
+  (list
+   (a-plus-abs-b 4 5)
+   (a-plus-abs-b -33 3)
+   (a-plus-abs-b 8 -70)
+   )
+#+end_src
+
+#+RESULTS:
+- 9
+- -30
+- 78

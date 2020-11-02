@@ -1,0 +1,74 @@
+*Exercise 1.5:* Ben Bitdiddle has invented a test to determine
+whether the interpreter he is faced with is using
+applicative-order evaluation or normal-order evaluation.  He
+defines the following two procedures:
+
+    #+name: src-block
+    #+begin_src scheme
+    (define (p) (p))
+
+    (define (test x y)
+      (if (= x 0)
+          0
+          y))
+    #+end_src
+
+Then he evaluates the expression
+
+    (test 0 (p))
+
+What behavior will Ben observe with an interpreter that uses
+applicative-order evaluation?  What behavior will he observe with
+an interpreter that uses normal-order evaluation?  Explain your
+answer.  (Assume that the evaluation rule for the special form
+`if' is the same whether the interpreter is using normal or
+applicative order: The predicate expression is evaluated first,
+and the result determines whether to evaluate the consequent or
+the alternative expression.)
+
+We know that the `if' statement will behave identically in
+normal-order evaluation and applicative-order evaluation. The
+difference, then, is in the parameter field.
+
+According to the University of Washington, normal-order
+evaluation "rewrite[s] the leftmost occurrence of a function
+application." So, a normal-order interpreter given
+
+#+header: :eval "no"
+#+begin_src scheme
+(test 0 (p))
+#+end_src
+
+would rewrite the leftmost function, which is `test':
+
+#+header: :eval "no"
+#+begin_src scheme
+  (if (= 0 0) 0 (p))
+#+end_src
+
+Remember, `if' evaluates the predicate expression before anything
+else. So, it would then evaluate to:
+
+#+header: :eval "no"
+#+begin_src scheme
+  (if #t 0 (p))
+#+end_src
+
+which will evaluuate to 0.
+
+According to the University of Washington, applicative-order
+evaluation "rewrite[s] the innermost occurrence of a function
+application first." So, an applicative-order interpreter given
+
+#+header: :eval "no"
+#+begin_src scheme
+(test 0 (p))
+#+end_src
+
+would want to evaluate `p' before anything else. However, it is
+impossible to evaluate `p' because during a single cycle of
+recursion, it never gets closer to a terminating condition. In
+fact, it /has/ no terminating condition. Calling `p' with a real
+interpreter would either raise a 'maximum recursion depth' error
+or crash the program. If the interpreter had access to infinite
+computational resources, the time complexity would be /O(1/0)/.

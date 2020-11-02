@@ -1,0 +1,152 @@
+*Exercise 1.6:* Alyssa P. Hacker doesn't see why `if' needs to be
+provided as a special form.  "Why can't I just define it as an
+ordinary procedure in terms of `cond'?" she asks.  Alyssa's friend
+Eva Lu Ator claims this can indeed be done, and she defines a new
+version of `if':
+
+    #+name: src-block
+    #+begin_src scheme
+    (define (new-if predicate then-clause else-clause)
+      (cond (predicate then-clause)
+            (else else-clause)))
+    #+end_src
+
+Eva demonstrates the program for Alyssa:
+
+    #+begin_src scheme :noweb yes :results list
+      <<src-block>>
+
+    (list
+      (new-if (= 2 3) 0 5)
+
+      (new-if (= 1 1) 0 5)
+    )
+    #+end_src
+
+    #+RESULTS:
+    - 5
+    - 0
+
+Delighted, Alyssa uses `new-if' to rewrite the square-root program:
+
+    #+header: :eval "no"
+    #+begin_src scheme
+    (define (sqrt-iter guess x)
+      (new-if (good-enough? guess x)
+              guess
+              (sqrt-iter (improve guess x)
+                          x)))
+    #+end_src
+
+What happens when Alyssa attempts to use this to compute square
+roots?  Explain.
+
+`if' is a special exception to the applicative order rule in that
+it does not evaluate all of its arguments before returning a
+values. This becomes apparent when `then-clause' and
+`else-clause' are not atoms. For example,
+
+#+header: :eval "no"
+#+begin_src scheme
+(new-if (= 2 3) (+ -1 1) (+ 3 2))
+#+end_src
+
+will evaluate to
+
+#+header: :eval "no"
+#+begin_src scheme
+(new-if #f 0 5)
+#+end_src
+
+because Scheme is an applicative-order interpreter, meaning it wants
+to evaluate the inner-most functions calls first. In this case, the
+inner-most function calls are `(= 2 3)', `(+ -1 1)' and `(+ 3
+2)'. Then, this will evaluate to
+
+#+header: :eval "no"
+#+begin_src scheme
+  (cond
+   (#f 0)
+   (else 5)
+   )
+#+end_src
+
+which evaluates to 0.
+
+`if', on the other hand, circumvents the interpreter by
+evaluating just one of its three arguments before returning a
+value. Let's take a look at `if''s evaluation and see how it
+differs from that of `new-if':
+
+#+header: :eval "no"
+#+begin_src scheme
+(if (= 2 3) (+ -1 1) (+ 3 2))
+#+end_src
+
+The Scheme interpreter sees the `if' keyword and applies a
+different set of rules to its interpretation. Before doing
+anything, Scheme evaluates the first parameter:
+
+#+header: :eval "no"
+#+begin_src scheme
+(if #t (+ -1 1) (+ 3 2))
+#+end_src
+
+The first parameter evaluates to `#t', so Scheme knows that it
+must simply return the second parameter: 
+
+#+header: :eval "no"
+#+begin_src scheme
+(+ -1 1)
+#+end_src
+
+This evaluates to 0.
+
+Now that we understand how the interpreter evaluates `new-if'
+expressions, let's how it would work in Alyssa's version of
+`sqrt-iter':
+
+#+header: :eval "no"
+#+begin_src scheme
+  (sqrt-iter 1 2)
+#+end_src
+
+This expands to:
+
+#+header: :eval "no"
+#+begin_src scheme
+  (new-if (good-enough? 1 2)
+          1
+          (sqrt-iter (improve 1 2)
+                      2))
+#+end_src
+
+Scheme wants to evaluate all of `new-if''s parameters before
+expanding it to a `cond' statement. `good-enough' will obviously
+evaluate to #f, but the third parameter is where things start to
+break down. Scheme tries to evaluate:
+
+#+header: :eval "no"
+#+begin_src scheme
+  (sqrt-iter
+   (improve 1 2)
+   2
+   )
+#+end_src
+
+After a few computational steps, this evaluates to:
+
+#+header: :eval "no"
+#+begin_src scheme
+(sqrt-iter 1.5 2)
+#+end_src
+
+This is problematic. `(sqrt-iter 1.5 2)' will expand into another
+`new-if' statement, which will want to evaluate all of the
+arguments again. Again, the third parameter of the `new-if'
+statement will evaluate to yet another `sqrt-iter' function, and
+the interpreter will be stuck in an infinite recursive loop. Even
+if `(good-enough? guess x)' had evaluated to `#t', the loop would
+never break. The interpreter would still want to evaluate the
+third parameter even though the terminating condition had been
+satisfied.
