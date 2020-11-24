@@ -173,7 +173,7 @@ discovered a 'nontrivial square root of 1'" in the squaring step
 of ~expmod~. Here is my final implementation with this knowledge
 in mind.
 
-#+begin_src scheme :results output
+#+begin_src scheme :results output org
   (define (nontrivial-sqrt? y m)
     (let ([ret (modulo (sqr y) m)])
       (if
@@ -226,7 +226,7 @@ in mind.
 #+end_src
 
 #+RESULTS:
-#+begin_example
+#+begin_src org
 Testing known primes:
 Prime
 Prime
@@ -254,6 +254,6 @@ Composite
 Composite
 Composite
 Composite
-#+end_example
+#+end_src
 
 It works as expected!
