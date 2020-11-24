@@ -50,7 +50,7 @@ Let's try calculating the square of a large number and then
 passing the large number into `is-good-enough?' to see if it
 passes:
 
-#+begin_src scheme :noweb yes :results list
+#+begin_src scheme :noweb yes :results value list :session foo
   <<src-block>>
   (define x 99999993339933392293393994495)
   (define sqrt-x (sqrt x))
@@ -65,21 +65,19 @@ passes:
    "Square of the above value:" sqr-sqrt-x
    "Calculated difference between x and the above value:" error-margin
    "The above value as a percentage of x:" error-margin-percent
-   ;; is-sqrt-x-good-enough?
+   is-sqrt-x-good-enough?
    )
 #+end_src
 
 #+RESULTS:
-- Original number x:
-- 99999993339933392293393994495
-- Calculated square root of x:
-- 316227755486347.8
-- Square of the above value:
-- 9.999999333993338e+28
-- Calculated difference between x and the above value:
-- 17592186044416.0
-- The above value as a percentage of x:
-- 1.7592187216067386e-16
+: - '("Original number x:" 99999993339933392293393994495 "Calculated square root of x:" 316227755486347.8 "Square of the above value:" 9.999999333993338e+28 "Calculated difference between x and the above value:" 17592186044416.0 "The above value as a percentage of x:" 1.7592187216067386e-16 #f)
+
+#+begin_src scheme :session foo
+  (sqr 4)
+#+end_src
+
+#+RESULTS:
+: 16
 
 The square of the calculated square root is off from the original
 number by ~1.76e+13. This is a large number, but relative to the

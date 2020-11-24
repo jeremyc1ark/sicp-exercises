@@ -1,0 +1,102 @@
+#+PROPERTY: header-args :eval no
+*Exercise 1.25:* Alyssa P. Hacker complains that we went to a lot
+of extra work in writing `expmod'. After all, she says, since we
+already know how to compute exponentials, we could have simply
+written
+
+    (define (expmod base exp m)
+      (remainder (fast-expt base exp) m))
+
+Is she correct?  Would this procedure serve as well for our fast
+prime tester?  Explain.
+
+Let's take a look at the procedure Hacker is proposing:
+
+#+begin_src scheme 
+  (define (hacker-expmod expmod base exp m)
+    (remainder (fast-expt base exp) m))
+#+end_src
+
+We can see that ~hacker-expmod~ is not recursive because it does
+not call itself. No matter large the inputs, ~hacker-expmod~ will
+always do the same operation: ~(remainder x m)~, where ~x~ is
+~(fast-expt base exp)~. In other words, the total work done in
+the lexical scope of ~hacker-expmod~ is /O(1)/. We already know
+that the order of growth of ~fast-expt~ is /O(log(n))/, meaning
+that as ~exp~ approaches infinity, the work done locally in
+~hacker-expmod~ will become negligible. This, by extension, means
+that the overall order of growth in ~hacker-expmod~ is
+/O(log(n))/, it's most significant term. This also means that,
+instead of comparing the performance of ~hacker-expmod~ with
+~expmod~, we should compare ~fast-expt~ with ~expmod~. If,
+~fast-expt~ is more efficient that ~expmod~, then ~hacker-expmod~
+more efficient, and vice versa. So, let's break these two
+functions down to see which is more efficient.
+
+#+begin_src scheme
+  (define (expmod base exp m)
+    (cond ((= exp 0) 1)
+          ((even? exp)
+           (modulo (sqr (expmod base (/ exp 2) m))
+                   m))
+          (else
+           (modulo (* base (expmod base (- exp 1) m))
+                   m))))
+
+  (define (fast-expt b n)
+    (cond ((= n 0) 1)
+          ((even? n) (sqr (fast-expt b (/ n 2))))
+          (else (* b (fast-expt b (- n 1))))))
+#+end_src
+
+Both procedures use successive squaring, so they have very
+similar recursive calls.
+
+#+begin_src scheme 
+  ;; If a certain input is even
+  (expmod base (/ exp 2) m)
+  (fast-expt b (/ n 2))
+
+  ;; If a certain input is odd
+  (expmod base (- exp 1) m)
+  (fast-expt b (- n 1))
+#+end_src
+
+In fact, the work done to compute the arguments for the recursive
+calls is identical. We can safely assume that they would take the
+same amount of time. In addition, both procedures will take the
+same number of steps if the inputs are similar. Calling
+~hacker-expmod~ with some set of arguments would result in the
+same number of calls to ~fast-expt~ as calling ~expmod~ would to
+itself, given the same set of arguments. However, this is not the
+end of the story because ~fast-expt~ and ~expmod~ are not
+tail-call recursive. They operate on the recursive calls, meaning
+that a base case must be reached before they start returning
+numerical values. ~fast-expt~ and ~expmod~ are practically
+identical except for these operations meaning that whichever
+procedure has the cheapest operations on its recursive calls will
+be the most efficient. Given ~r~, the value of the recursive
+procedure call alone, the operations on the recursive call alone
+look like this:
+
+#+begin_src scheme 
+  ;; EXPMOD
+  ;; if `exp' is even
+  (modulo (sqr r) m)
+  ;; if `exp' is odd
+  (modulo (* base r) m)
+
+  ;; FAST-EXPT
+  ;; if `n' is even
+  (sqr r)
+  ;; if `n' is odd
+  (* b r)
+#+end_src
+
+We have a clear winner. ~expmod~ does the same operations as
+~fast-expt~, but ~expmod~ also finds the modulo of that
+computation with ~m~. Therefore, Hacker is correct. Her proposed
+procedure would be more efficient than the original ~expmod~
+procedure. Hacker's procedure will only use ~modulo~ once,
+whereas the original procedure uses it a number of times
+proportional to /log(exp)/.

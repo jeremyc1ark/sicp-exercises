@@ -1,0 +1,32 @@
+*Exercise 1.27:* Demonstrate that the Carmichael numbers listed in
+*Note Footnote 1-47:: really do fool the Fermat test.  That is,
+write a procedure that takes an integer n and tests whether a^n is
+congruent to a modulo n for every a<n, and try your procedure on
+the given Carmichael numbers.
+
+#+begin_src scheme :results output
+  (define carmicheal-nums
+    (list 61 1105 1729 2465 2821 6601))
+
+  (define (fermat-fooler x)
+    (define (helper n a)
+      (cond
+       ((= a n) #t)
+       ((= (modulo (expt a n) n) (modulo a n))
+        (helper n (add1 a)))
+       (else #f)))
+    (helper x 1))
+
+  (map (lambda (b) (display (~a b "\n")))
+               (map fermat-fooler carmicheal-nums))
+#+end_src
+
+#+RESULTS:
+: #t
+: #t
+: #t
+: #t
+: #t
+: #t
+
+They are in fact Carmichael numbers.

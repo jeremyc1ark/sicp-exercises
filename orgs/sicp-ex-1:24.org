@@ -1,0 +1,78 @@
+*Exercise 1.24:* Modify the `timed-prime-test' procedure of *Note
+Exercise 1-22:: to use `fast-prime?' (the Fermat method), and test
+each of the 12 primes you found in that exercise.  Since the
+Fermat test has [theta](`log' n) growth, how would you expect the
+time to test primes near 1,000,000 to compare with the time needed
+to test primes near 1000?  Do your data bear this out?  Can you
+explain any discrepancy you find?
+
+#+begin_src scheme :results list
+  (require math/statistics)
+  (require racket/trace)
+
+  (define (expmod base exp m)
+    (cond ((= exp 0) 1)
+          ((even? exp)
+           (modulo (sqr (expmod base (/ exp 2) m))
+                      m))
+          (else
+           (modulo (* base (expmod base (- exp 1) m))
+                      m))))
+
+  (define (fermat-test n)
+    (define (try-it a)
+      (= (expmod a n n) a))
+    (try-it (+ 1 (random (- n 1)))))
+
+  (define (fast-prime? n times)
+    (cond ((= times 0) #t)
+          ((fermat-test n) (fast-prime? n (- times 1)))
+          (else #f)))
+
+  (define (time-prime x)
+    (let ([begin (current-inexact-milliseconds)]
+          [is-prime (fast-prime? x 5)]
+          [end (current-inexact-milliseconds)])
+      (exact-round (* 1000000 (- end begin)))))
+
+  (define primes-near-thousand
+    (list 1009 1013 1019 1021 1031 1033 1039))
+
+  (define primes-near-million
+    (list 1000003 1000033 1000037 1000039 1000081 1000099 1000117))
+
+  (define (mean-time val-list)
+    (exact-round (mean (map time-prime val-list))))
+
+  (list
+   (mean-time primes-near-thousand)
+   (mean-time primes-near-million))
+#+end_src
+
+#+RESULTS:
+- 43701
+- 21136
+
+I would have expected that the first element of the list would be
+\~half of the second element.
+/log(1000)/ = 3 and /log(1000000)/ = 6, so if the order of growth
+really was logorithmic, we would see the results reflect this.
+Honestly, I'm kind of stumped as to how this happened. I've read
+some discussion forums saying that the fermat test performs
+really poorly on numbers around 1000, so this could be the reason
+why we see this discrepancy. I was so confused as to why I am
+seeing this behavior that I looked at solutions others have
+posted online. They seemed to get results consistent with an
+order of growth in time of /O(log(n))/, but they were using
+extremely large numbers. If I try using those same numbers,
+Racket crashes because it cannot generate random numbers in such
+a large range, meaning that ~fermat-test~ cannot run.
+
+#+begin_src scheme :results output
+  (random 1000000000000037)
+#+end_src
+
+#+RESULTS:
+: random: contract violation
+:   expected: (or/c (integer-in 1 4294967087) pseudo-random-generator?)
+:   given: 1000000000000037

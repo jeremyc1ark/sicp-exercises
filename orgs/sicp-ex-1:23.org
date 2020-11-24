@@ -1,0 +1,132 @@
+*Exercise 1.23:* The `smallest-divisor' procedure shown at the
+start of this section does lots of needless testing: After it
+checks to see if the number is divisible by 2 there is no point in
+checking to see if it is divisible by any larger even numbers.
+This suggests that the values used for `test-divisor' should not
+be 2, 3, 4, 5, 6, ..., but rather 2, 3, 5, 7, 9, ....  To
+implement this change, define a procedure `next' that returns 3 if
+its input is equal to 2 and otherwise returns its input plus 2.
+Modify the `smallest-divisor' procedure to use `(next
+test-divisor)' instead of `(+ test-divisor 1)'.  With
+`timed-prime-test' incorporating this modified version of
+`smallest-divisor', run the test for each of the 12 primes found in
+*Note Exercise 1-22::.  Since this modification halves the number
+of test steps, you should expect it to run about twice as fast.
+Is this expectation confirmed?  If not, what is the observed ratio
+of the speeds of the two algorithms, and how do you explain the
+fact that it is different from 2?
+
+#+name: src-main
+#+begin_src scheme :results silent
+  (define (divides? a b)
+    (= (remainder b a) 0))
+
+  (define (next x)
+    (if (= x 2) 3 (+ 2 x)))
+
+  (define (new-find-divisor n test-divisor)
+    (cond ((> (sqr test-divisor) n) n)
+          ((divides? test-divisor n) test-divisor)
+          (else (new-find-divisor n (next test-divisor)))))
+
+  (define (new-smallest-divisor n)
+    (new-find-divisor n 2))
+
+  (define (new-prime? n)
+    (= n (new-smallest-divisor n)))
+
+  (define (old-find-divisor n test-divisor)
+    (cond ((> (sqr test-divisor) n) n)
+          ((divides? test-divisor n) test-divisor)
+          (else (old-find-divisor n (add1 test-divisor)))))
+
+  (define (old-smallest-divisor n)
+    (old-find-divisor n 2))
+
+  (define (old-prime? n)
+    (= n (old-smallest-divisor n)))
+
+  (define (time-prime func input)
+    (let ([begin (current-inexact-milliseconds)]
+          [is-prime (func input)]
+          [end (current-inexact-milliseconds)])
+      (* 1000000 (- end begin)))
+    )
+
+  (define prime-list
+    (list 1019 1013 1009 10037 10009 10007 100043 100019 100003))
+
+  (define time-list
+    (list
+     (map (lambda (x) (time-prime old-prime? x)) prime-list)
+     (map (lambda (x) (time-prime new-prime? x)) prime-list)))
+#+end_src
+
+#+begin_src scheme :noweb yes
+  <<src-main>>
+  time-list
+#+end_src
+
+#+RESULTS:
+| 61035.15625 |      0.0 | 1220.703125 | 1953.125 |   2929.6875 | 1953.125 | 22949.21875 | 7080.078125 | 28076.171875 |
+|     46875.0 | 976.5625 |    976.5625 | 976.5625 | 2197.265625 | 976.5625 |   4882.8125 | 7080.078125 |     5859.375 |
+
+#+begin_src scheme :noweb yes :results list
+  <<src-main>>
+  (require math/statistics)
+  (define (calc-change l1 l2 [results null])
+    (cond
+     ((or (null? l1) (null? l2)) results)
+     ((or (= (car l1) (car l2))
+            (or (zero? (car l1)) (zero? (car l2))))
+        (calc-change (cdr l1) (cdr l2) results))
+        (else (calc-change (cdr l1)
+                            (cdr l2)
+                            (cons
+                             (/ (abs (- (car l1) (car l2))) (max (car l1) (car l2)))
+                                  results)))))
+
+  (define %-differences
+   (calc-change (car time-list) (cadr time-list)))
+
+  (cons
+   (~a "Mean of times below is: "
+       (mean %-differences))
+   %-differences)
+#+end_src
+
+#+RESULTS:
+- Mean of times below is: 0.32038892034440014
+- 0.3228346456692913
+- 0.3435114503816794
+- 0.362962962962963
+- 0.37777777777777777
+- 0.4444444444444444
+- 0.2926829268292683
+- 0.07692307692307693
+- 0.3419740777666999
+
+
+On average, the optimized algorithm is 32% faster than the
+original algoirithm. This is an improvement, but it's still 18%
+slower than we expected. Using ~next~ in ~new-find-divisor~
+/does/ halve the number of recursive calls, but consider the
+additional steps ~next~ involves. ~new-find divisor~'s recursive
+call looks like:
+
+#+begin_src scheme :eval no
+  (new-find-divisor n (if (= test-divisor 2) 3 (+ 2 test-divisor)))
+#+end_src
+
+Whereas ~old-find-divisor~'s recursive call looks like:
+
+#+begin_src scheme
+  (old-find-divisor n (add1 test-divisor))
+#+end_src
+
+So, ~next~ reduces the number of recursive calls, but it takes a
+bit of extra work to do so. However, it is less computationally
+expensive to call ~next~ than it is to perform an additional
+recursive call, so we still get an improvement. That 18%
+shortfall in performance speed can be attributed to the work done
+in ~next~.

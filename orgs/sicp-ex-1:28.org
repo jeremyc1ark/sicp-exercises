@@ -1,0 +1,132 @@
+*Exercise 1.28:* One variant of the Fermat test that cannot be
+fooled is called the "Miller-Rabin test" (Miller 1976; Rabin
+1980).  This starts from an alternate form of Fermat's Little
+Theorem, which states that if n is a prime number and a is any
+positive integer less than n, then a raised to the (n - 1)st power
+is congruent to 1 modulo n.  To test the primality of a number n
+by the Miller-Rabin test, we pick a random number a<n and raise a
+to the (n - 1)st power modulo n using the `expmod' procedure.
+However, whenever we perform the squaring step in `expmod', we
+check to see if we have discovered a "nontrivial square root of 1
+modulo n," that is, a number not equal to 1 or n - 1 whose square
+is equal to 1 modulo n.  It is possible to prove that if such a
+nontrivial square root of 1 exists, then n is not prime.  It is
+also possible to prove that if n is an odd number that is not
+prime, then, for at least half the numbers a<n, computing a^(n-1)
+in this way will reveal a nontrivial square root of 1 modulo n.
+(This is why the Miller-Rabin test cannot be fooled.)  Modify the
+`expmod' procedure to signal if it discovers a nontrivial square
+root of 1, and use this to implement the Miller-Rabin test with a
+procedure analogous to `fermat-test'.  Check your procedure by
+testing various known primes and non-primes.  Hint: One convenient
+way to make `expmod' signal is to have it return 0.
+
+As much as I love SICP, I think this question does a terrible job
+of explaining the Miller-Rabin test. I went out and looked for
+definitions of the Miller-Rabin test, and now I understand what
+it is supposed to do. Before I implement it, let me explain it.
+
+* Step 1: Solve for /k/ and /m/ 
+  Consider our proposed number, /n/. In the first step of the
+  Miller-Rabin test, our task is to find constants /k/ and /m/ such
+  that:
+  n - 1 = (2 ^ k) * m
+
+  To do this, we divide /n - 1/ by /2 ^ c/, where /c/ starts at 0
+  and increments by 1. We continue incrementing /c/ until
+  (n - 1) / (2 ^ c) is a floating point number. For example, say we
+  must test the primality of 221 using the Miller-Rabin test.
+
+  We begin by subtracting 1 from /n/.
+  221 - 1 = 220
+
+  Then, we start dividing 220 by /2 ^ c/ (starting at 1 and
+  incrementing by 1) until we get a floating point number.
+
+  220 / (2 ^ 1) = 110
+  220 / (2 ^ 2) = 55
+  220 / (2 ^ 3) = 27.5
+
+  We have gotten a floating point number, which is our signal to
+  stop. Now, let's look at the previous equation, which has
+  important information.
+
+  220 / (2 ^ 2) = 55
+
+  This equation has the information we need to solve for /k/ and
+  /m/ in /220 - 1 = (2 ^ k) * m. The quotient, 55, is our value for
+  /m/. The exponent, 2, is our value for /k/.
+
+  m = 55
+  k = 2
+  n = 221
+
+  With these variables, we can solve the equation:
+
+  221 - 1 = (2 ^ 2) * 55
+
+* Step 2: Choose /a/
+  a ∈ ℝ
+  1 < a < n - 1
+
+  In other words, /a/ is an integer between 1 and /n - 1/, where
+  n is the proposed prime number. If we were to continue with a
+  real example from the previous step, then /a/ would be an
+  integer greater than 1 and less than 220. In the Miller-Rabin
+  test, /a/ is chosen randomly within this range. So, possible
+  values of /a/ include (but are not limited to) 2, 119 and 100.
+  Let's try 10.
+
+  a = 10
+
+* Step 3: Determine strong probable prime or composite witness
+  Like Fermat's Little Theorem, the Miller-Rabin primality test
+  is a probabalistic algorithm. Therefore, one iteration of the
+  Miller-Rabin can either prove that a number is composite or
+  predict with a very high accuracy that a number is prime. To
+  prove with absolute certainty that a number is prime, one must
+  divide said number by all members of /f/, where /f/ is 2 or an
+  odd integer between 2 and the square root of the number. This
+  algorithm has already been explored earlier in the chapter. To
+  determine a strong probable prime or a composite witness, we
+  will use the following formula:
+
+  B0 = (a ^ m) % n
+
+  From our running example, we have:
+
+  a = 10
+  m = 55
+  n = 221
+
+  Meaning,
+
+  B0 = (10 ^ 55) % 221
+  B0 = 192
+
+  At this point, there are two possibilities:
+
+  1. *B0 = 1 or B0 = -1*: /n/ is very likely to be prime.
+  2. *B0 ≠ 1 and B0 ≠ -1*: /n/ could be composite or prime. More
+     testing is needed.
+
+  We have encountered the second possibility, meaning that more
+  testing is needed. If B0 ≠ 1 and B0 ≠ -1, then we revert to the
+  more general case, /Bz/:
+
+  Bz = (B(z - 1) ^ 2) % n
+
+  In our case, this is,
+
+  B1 = (B0 ^ 2) % 221
+  B1 = (192 ^ 2) % 221
+  B1 = 178
+
+  At this point, there are three possibilities:
+
+  1. *Bz = 1*: /n/ is definitely composite.
+  2. *Bz = -1*: /n/ is very likely to be prime.
+  3. *Bz ≠ 1 and Bz ≠ -1*: /n/ could be composite or prime. More
+     testing is needed.
+
+  

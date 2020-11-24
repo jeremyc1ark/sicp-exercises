@@ -1,0 +1,29 @@
+*Exercise 1.12:* The following pattern of numbers is called "Pascal's
+triangle".
+
+            1
+          1   1
+        1   2   1
+      1   3   3   1
+    1   4   6   4   1
+
+The numbers at the edge of the triangle are all 1, and each number
+inside the triangle is the sum of the two numbers above it.(4)
+Write a procedure that computes elements of Pascal's triangle by
+means of a recursive process.
+
+~x~ is the lateral index of a level, and ~y~ is the level number,
+both using one-origin indexing.
+
+#+begin_src scheme :session ex-1:12 :results value
+  (define (pascal x y)
+    (if (or (= x y) (= x 1))
+        1
+        (+ (pascal x (sub1 y))
+           (pascal (sub1 x) (sub1 y)))))
+
+  (pascal 4 8)
+#+end_src
+
+#+RESULTS:
+: 35

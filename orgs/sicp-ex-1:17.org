@@ -1,0 +1,44 @@
+*Exercise 1.17:* The exponentiation algorithms in this section are
+based on performing exponentiation by means of repeated
+multiplication.  In a similar way, one can perform integer
+multiplication by means of repeated addition.  The following
+multiplication procedure (in which it is assumed that our language
+can only add, not multiply) is analogous to the `expt' procedure:
+
+    (define (* a b)
+      (if (= b 0)
+          0
+          (+ a (* a (- b 1)))))
+
+This algorithm takes a number of steps that is linear in `b'.  Now
+suppose we include, together with addition, operations `double',
+which doubles an integer, and `halve', which divides an (even)
+integer by 2.  Using these, design a multiplication procedure
+analogous to `fast-expt' that uses a logarithmic number of steps.
+
+#+begin_src scheme :eval no
+  (define (double y)
+    (* 2 y)
+    )
+
+  (define (halve x)
+    (/ x 2)
+    )
+
+  (define (*-log a b)
+    (cond
+     ((= b 1) a)
+     ((even? b) (*-log (double a) (halve b)))
+     (else (+ a (*-log a (- b 1))))
+     )
+    )
+#+end_src
+
+This has an order of growth in time of /O(log(b))/, but it also
+has an order of growth in space of /O(log(b)/ because the ~+~
+operation cannot is deferred until the value of ~(*-log a (- b
+1))~ is calucated, which requires even more recursive calls. It
+would be better to use an accumulator so that all of the
+arguments to the recursive calls can be computed immediately.
+This would be iterative and it would have an order of growth in
+space of /O(1)/.

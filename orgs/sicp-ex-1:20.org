@@ -1,0 +1,77 @@
+*Exercise 1.20:* The process that a procedure generates is of
+course dependent on the rules used by the interpreter.  As an
+example, consider the iterative `gcd' procedure given above.
+Suppose we were to interpret this procedure using normal-order
+evaluation, as discussed in section *Note 1-1-5::.  (The
+normal-order-evaluation rule for `if' is described in *Note
+Exercise 1-5::.)  Using the substitution method (for normal
+order), illustrate the process generated in evaluating `(gcd 206
+40)' and indicate the `remainder' operations that are actually
+performed.  How many `remainder' operations are actually performed
+in the normal-order evaluation of `(gcd 206 40)'?  In the
+applicative-order evaluation?
+
+Normal order evaluation waits until the last minute to calculate
+values. It will always expand the outermost function. I tried
+writing out how the evaluator would evaluate ~(gcd 206 40)~ and
+it got really messy really quickly. I could not find a version of
+scheme or racket that does normal order eval, and now I
+understand why.
+
+(if (= (remainder (remainder 40 (remainder 206 40) (remainder 40
+(remainder 206 40))) (remainder (remainder 206 40) (remainder 40
+(remainder 206 40)))) 0) (remainder (remainder 206 40) (remainder
+40 (remainder 206 40))) (gcd (remainder (remainder 40 (remainder
+206 40) (remainder 40 (remainder 206 40))) (remainder (remainder
+206 40) (remainder 40 (remainder 206 40)))) (remainder (remainder
+(remainder 206 40) (remainder 40 (remainder 206 40)))))) 
+
+Look at all that repetition! As I wrote all of the evaluation out
+manually, I realized that ~remainder~ gets called a whole lot.
+The block above shows ~(gcd 206 40)~ fairly late in its
+evaluation, but arguments from the initial call are still being
+used. Normal order eval procrastinates evaluation, and just like
+a student procrastinating an assignment, the interpreter has too
+much work at the very end. And, repeats the same computations.
+The interpreter could have evaluated ~(remainder 206 40)~ before
+it was passed into ~gcd~, but it did not, so we get this huge
+mess at the end which takes up a lot of space and is slow. Plus,
+as we learned earlier in the chapter, normal-order evaluation
+can sometimes let errors sneak by, which could be a headache in
+production or in the debugging process.
+If I had a normal order interpreter available, I would answer
+with the actual number of calls to ~remainder~. However, as I am
+doing the work of the interpreter manually, this seems like a
+waste of time and something that will not actually contribute to
+my learning. Maybe I will write a normal order interpreter for
+Racket sometime down the line, but for now, let's just move onto
+the applicative order interpreter because I understand what this
+exercise is trying to teach me about the differences between
+interpreters.
+
+#+begin_src scheme :results list
+  (define (gcd a b)
+    (define (helper x y counter)
+      (if (= y 0)
+          (list x counter)
+          (helper y (modulo x y) (+ counter 1))))
+    (helper a b 0)
+    )
+
+  (gcd 206 40)
+#+end_src
+
+#+RESULTS:
+- 2
+- 4
+
+So, ~(gcd 206 40)~ calls ~remainder~ (which I've just replaced
+with Racket's built in ~modulo~ function) 4 times and determines
+that the greatest common divisor between its two arguments is 2.
+Originally, I was defining a ~remainder~ function that added one
+to a global variable called ~remainder-counter~ every time it was
+called. This left ~gcd~ exactly how it was defined in SICP. For
+some reason, this worked perfectly fine when I defined these
+functions in a .rkt file and ran it, but it returned different
+results when I ran it in an org mode source block. Not sure why
+this happened.
