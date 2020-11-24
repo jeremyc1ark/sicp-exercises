@@ -129,4 +129,131 @@ it is supposed to do. Before I implement it, let me explain it.
   3. *Bz ≠ 1 and Bz ≠ -1*: /n/ could be composite or prime. More
      testing is needed.
 
+  If the third case occurs, we reuse the above formula. For our
+  example, the third case has occurred, as B1 = 178. So, we'll
+  try again.
+
+  B2 = (B1 ^ 2) % 221
+  B2 = (178 ^ 2) % 221
+  B2 = 81
+
+  We have met our third case again, but this is OK. We can
+  continue this process until we meet the first or second case.
+  If we were to do this, we would eventually end up with 1,
+  meaning that 221 is composite.
+
+  If we determined that /n/ is probably prime, we could choose a
+  new value for /a/ and repeat this step multiple times to
+  increase the probabilistic 'strength' of the prime (or find out
+  that the number is a psuedoprime).
+
+That's it. Now that we understand what the Miller-Rabin test
+actually does, we can implement it in the way SICP suggests: By
+using ~expmod~ and writing a procedure analogous to the fermat
+test. I'll be honest and say that even after going through all
+the steps of the Miller-Rabin test, I was still confused as to
+how one would transfer implement its process in the ~expmod~
+procedure. Specifically, the following part of the problem was
+unclear even after reading it dozens of times:
+
+  /However, whenever we perform the squaring step in `expmod', we/
+  /check to see if we have discovered a "nontrivial square root of 1/
+  /modulo n," that is, a number not equal to 1 or n - 1 whose square/
+  /is equal to 1 modulo n./
   
+I tried many different approaches to this, none of which worked.
+Finally, I gave up and looked to see how others online had
+implemented this procedure which I called ~nontrivial-sqrt?~. It
+turns out that I was doing everything correctly except for the
+calculating the value of ~ret~. In calculating ~ret~, I was
+simply doing a recursive call to ~expmod~. Inevitably, this
+caused all of my primality tests to return ~#t~. So, now I
+understand what they mean by checking "to see if we have
+discovered a 'nontrivial square root of 1'" in the squaring step
+of ~expmod~. Here is my final implementation with this knowledge
+in mind.
+
+#+begin_src scheme :results output
+  (define (nontrivial-sqrt? y m)
+    (let ([ret (modulo (sqr y) m)])
+      (if
+       (and (not (or (= y 1) (= y (sub1 m))))
+            (= 1 ret))
+       0
+       ret)))
+
+  (define (expmod base exp m)
+    (cond ((zero? exp) 1)
+          ((even? exp)
+           (nontrivial-sqrt? (expmod base (/ exp 2) m) m))
+          (else
+           (modulo (* base (expmod base (sub1 exp) m))
+                   m))))
+
+  (define (miller-rabin-test x)
+    (= 1 (expmod
+          (random 1 x)
+          (sub1 x)
+          x)))
+
+  (define (miller-rabin-prime? n)
+    (define (helper f counter)
+      (cond
+       ((zero? counter) #t)
+       ((miller-rabin-test f) (helper f (sub1 counter)))
+       (else #f)))
+    (helper n 5))
+
+  (define known-primes
+    (list 73 79 83 89 97 101 103 107 109 113))
+
+  (define known-composites
+    (list 64 65 66 68 69 70 72 74 75 76 77 78 80 81 82))
+
+  (define (little-formatter lat)
+    (define (print-result bool)
+      (if
+       bool
+       (display "Prime\n")
+       (display "Composite\n")))
+    (map print-result
+         (map miller-rabin-prime? lat)))
+
+  (display "Testing known primes:\n")
+  (little-formatter known-primes)
+  (display "Testing known composites:\n")
+  (little-formatter known-composites)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Testing known primes:
+Prime
+Prime
+Prime
+Prime
+Prime
+Prime
+Prime
+Prime
+Prime
+Prime
+Testing known composites:
+Composite
+Composite
+Composite
+Composite
+Composite
+Composite
+Composite
+Composite
+Composite
+Composite
+Composite
+Composite
+Composite
+Composite
+Composite
+#+end_example
+
+It works as expected!
