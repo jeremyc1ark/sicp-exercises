@@ -1,0 +1,65 @@
+*Exercise 1.30:* The `sum' procedure above generates a linear
+recursion.  The procedure can be rewritten so that the sum is
+performed iteratively.  Show how to do this by filling in the
+missing expressions in the following definition:
+
+    (define (sum term a next b)
+      (define (iter a result)
+        (if <??>
+            <??>
+            (iter <??> <??>)))
+      (iter <??> <??>))
+
+     
+#+name: src-block
+#+begin_src scheme
+  (define (integral f a b dx)
+    (define (add-dx x) (+ x dx))
+    (* (sum f (+ a (/ dx 2.0)) add-dx b)
+       dx))
+
+  (define (cube q)
+    (expt q 3))
+#+end_src
+
+I'll copy the recursive version of ~sum~, write a new, iterative
+version of it, and then compare their results when they are used
+in a real situation. First, the original recursive function:
+
+#+begin_src scheme :noweb yes
+  (define (sum term a next b)
+    (if (> a b)
+        0
+        (+ (term a)
+           (sum term (next a) next b))))
+
+  <<src-block>>
+
+  (exact->inexact (integral cube 0 1 0.01))
+#+end_src
+
+#+RESULTS:
+: 0.24998750000000042
+
+Next, let's write the iterative version using an accumulator.
+
+#+begin_src scheme :noweb yes
+  (define (sum term a next b)
+    (define (iter a result)
+      (if (> a b)
+          result
+          (iter (next a) (+ (term a) result))))
+    (iter a 0))
+
+  <<src-block>>
+
+  (exact->inexact (integral cube 0 1 0.01))
+#+end_src
+
+#+RESULTS:
+: 0.24998750000000042
+
+As we can see, the two functions are identical. The only
+difference is the way that they compute their results. The
+recursive version has an order of growth in space of
+/O(abs(a-b)/, whereas the iterative version only takes /O(1)/.

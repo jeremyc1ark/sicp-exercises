@@ -1,0 +1,78 @@
+*Exercise 1.31:*
+  a. The `sum' procedure is only the simplest of a vast number of
+    similar abstractions that can be captured as higher-order
+    procedures.(3)  Write an analogous procedure called `product'
+    that returns the product of the values of a function at
+    points over a given range.  Show how to define `factorial' in
+    terms of `product'.  Also use `product' to compute
+    approximations to [pi] using the formula(4)
+
+          pi   2 * 4 * 4 * 6 * 6 * 8 ...
+          -- = -------------------------
+          4   3 * 3 * 5 * 5 * 7 * 7 ...
+
+  b. If your `product' procedure generates a recursive process,
+    write one that generates an iterative process.  If it
+    generates an iterative process, write one that generates a
+    recursive process.
+
+* Part A
+  #+begin_src scheme :results output
+    (define (product term a next b)
+      (define (iter a result)
+        (if (> a b)
+            result
+            (iter (next a) (* (term a) result))))
+      (iter a 1))
+
+    (define (factorial n)
+      (define (identity x) x)
+      (product identity 1 add1 n))
+
+
+    (define (pi accuracy)
+      (let* ([numer-lo 4]
+             [numer-hi (+ numer-lo (* 2 accuracy))]
+             [add2 (lambda (d) (+ 2 d))]
+             [denom-lo 3]
+             [denom-hi (+ denom-lo (* 2 accuracy))])
+        (/
+         (* 8
+            (/ (product sqr numer-lo add2 numer-hi)
+               numer-hi))
+         (product sqr denom-lo add2 denom-hi))))
+
+    (display
+     (~a
+      "(factorial 8) = "
+      (factorial 8)
+      "\n"))
+
+    (display
+     (~a
+      "(pi 1000) = "
+      (exact->inexact (pi 1000))))
+  #+end_src
+
+  #+RESULTS:
+  : (factorial 8) = 40320
+  : (pi 1000) = 3.1423765818510274
+
+  It took me a minute to figure out how to write ~pi~ using
+  ~product~ because the formula definition is "offset". I found a
+  way to work around this by dividing the numerator term by its
+  highest coefficient, which "realigns" the numerator and
+  denominator.
+  
+* Part B
+
+  I have written ~product~ iteratively, so now I will write it
+  recursively.
+
+  #+header: :eval "no"
+  #+begin_src scheme
+    (define (product term a next b)
+      (if (> a b)
+          1
+          (* (term a) (product (term (next a) next b)))))
+  #+end_src

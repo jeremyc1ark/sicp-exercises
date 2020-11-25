@@ -1,0 +1,125 @@
+*Exercise 1.33:* You can obtain an even more general version of
+`accumulate' (*Note Exercise 1-32::) by introducing the notion of
+a "filter" on the terms to be combined. That is, combine only
+those terms derived from values in the range that satisfy a
+specified condition.  The resulting `filtered-accumulate'
+abstraction takes the same arguments as accumulate, together with
+an additional predicate of one argument that specifies the filter.
+Write `filtered-accumulate' as a procedure.  Show how to express
+the following using `filtered-accumulate':
+
+  a. the sum of the squares of the prime numbers in the interval a
+    to b (assuming that you have a `prime?' predicate already
+    written)
+
+  b. the product of all the positive integers less than n that are
+    relatively prime to n (i.e., all positive integers i < n such
+    that GCD(i,n) = 1).
+    
+
+I implemented both an iterative and recursive version of this
+procedure. Like I've mentioned in previous exercises, the
+iterative one is better because it consumes less space. So, for
+the purposes of testing Parts A and B, I will use the iterative
+implementation.
+
+#+begin_src scheme :results list
+  (require math/number-theory)
+
+  (define (filtered-accumulate-rec req combiner null-value term a next b)
+    (if (> a b)
+        null-value
+        (let* ([a-term (term a)]
+               [passed (req a-term)]
+               [next-step (filtered-accumulate-rec
+                          req
+                          combiner
+                          null-value
+                          term
+                          (next a)
+                          next
+                          b)])
+          (if passed
+              (combiner a-term next-step)
+              next-step))))
+
+
+  (define (filtered-accumulate-iter req combiner null-value term a next b)
+    (define (helper i j acc)
+      (if (> i j)
+          acc
+          (let ([i-term (term i)])
+            (if (req i-term)
+                (helper (next i) j (combiner i-term acc))
+                (helper (next i) j acc)))))
+    (helper a b null-value))
+
+  (define (part-a-procedure lo hi)
+    (filtered-accumulate-iter prime? + 0 sqr lo add1 hi))
+
+  (define (part-b-procedure lo hi)
+    (define (b-req g)
+      (and (coprime? g hi) (< g hi)))
+    (define (identity h) h)
+    (filtered-accumulate-iter b-req * 1 identity lo add1 hi))
+
+  (list
+   (part-a-procedure 1 1000)
+   (part-b-procedure 1 21))
+#+end_src
+
+#+RESULTS:
+- 0
+- 47297536000
+
+I was a bit confused as to why ~(part-a-procedure 1 1000)~
+returned 0. I tried many other values, but to no avail. After
+analyzing my procedure, I figured out why this was happening.
+~part-a-procedure~ calls ~filtered-accumulate-iter~ with a
+primality test as ~req~ and a squaring function as ~term~. The
+prompt says to "combine only those terms derived from values in
+the range that satisfy a specified condition." Implicit in this
+statement is that we should apply the ~req~ test to the value of
+~term~ applied to the current number. So, in the case of
+~part-a-procedure~, we sqaure a number and then determine whether
+it is prime. But, the square of any integer is inherently
+composite. So, ~req~ will always fail. If ~req~ fails, we do a
+recursive call without changing accumulator. This will repeat
+until we reach the base case, at which point we will simply
+return the accumulator. So, we get 0 every time because 0 is the
+~null-value~ for ~acc~, and it never gets changed as long ~a~ and
+~b~ are integers.
+
+You might be wondering why I bothered with the ~let~ statements
+in both the recursive and iterative implemenations. First, if
+used correctly, ~let~ statements can make code more readable by
+assigning intuitive variable names. However, I used ~let~
+primarily for reasons of efficiency, which has become somewhat of
+an obsession of mine. For example, in the iterative
+implementation, I wrote the following ~let~ statement:
+
+#+header: :eval "no"
+#+begin_src scheme
+  (let ([i-term (term i)])
+    (if (req i-term)
+        (helper (next i) j (combiner i-term acc))
+        (helper (next i) j acc)))
+#+end_src
+
+We call ~let~ by setting ~i-term~ to ~(term i)~. Then, we test
+~i-term~ against ~req~. If it returns ~#t~, we do a recursive
+call to ~helper~, which uses ~i-term~ to compute its ~acc~
+argument. If we had omitted the ~let~ statement, if ~(term i)~
+had passed the ~req~ test, we would have needed to compute it
+again in the return result. By storing the value of ~(term i)~ in
+~i-term~, we only have to compute it once.
+
+You might also be wondering why I have a nested ~if~ structure in
+~helper~. Why not use ~cond~, which can handle more than one
+predicate? This ties into the use of ~let~. Because Racket is a
+declarative programming language, we would have to surround the
+entire ~cond~ statement with ~let~. However, not all
+predicate-value pairs would require ~i-term~ to run. If ~i~
+happened to be greater than ~j~ (base case), then we would have
+gone through all the trouble of computing ~(term i)~ for nothing.
+Using a nested ~if~ structure mitigates this problem. 
