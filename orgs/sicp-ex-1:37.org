@@ -1,0 +1,104 @@
+*Exercise 1.37:*
+  a. An infinite "continued fraction" is an expression of the form
+
+                    N_1
+          f = ---------------------
+                        N_2
+              D_1 + ---------------
+                            N_3
+                    D_2 + ---------
+                          D_3 + ...
+
+    As an example, one can show that the infinite continued
+    fraction expansion with the n_i and the D_i all equal to 1
+    produces 1/[phi], where [phi] is the golden ratio (described
+    in section *Note 1-2-2::).  One way to approximate an
+    infinite continued fraction is to truncate the expansion
+    after a given number of terms.  Such a truncation--a
+    so-called finite continued fraction "k-term finite continued
+    fraction"--has the form
+
+                N_1
+          -----------------
+                    N_2
+          D_1 + -----------
+                ...    N_K
+                    + -----
+                      D_K
+
+    Suppose that `n' and `d' are procedures of one argument (the
+    term index i) that return the n_i and D_i of the terms of the
+    continued fraction.  Define a procedure `cont-frac' such that
+    evaluating `(cont-frac n d k)' computes the value of the
+    k-term finite continued fraction.  Check your procedure by
+    approximating 1/[phi] using
+
+          (cont-frac (lambda (i) 1.0)
+                    (lambda (i) 1.0)
+                    k)
+
+    for successive values of `k'.  How large must you make `k' in
+    order to get an approximation that is accurate to 4 decimal
+    places?
+
+  b. If your `cont-frac' procedure generates a recursive process,
+    write one that generates an iterative process.  If it
+    generates an iterative process, write one that generates a
+    recursive process.
+
+* Part A
+
+  #+begin_src scheme
+    (define (cont-frac n d k)
+      (define (helper i acc)
+        (if
+         (= i 1)
+         (/ (n 1) acc)
+         (helper
+          (sub1 i)
+          (+ (d (sub1 i))
+             (/ (n i) acc)))))
+      (helper (sub1 k) (/ (n k) (d k))))
+
+    (cont-frac (lambda (a) 1.0)
+               (lambda (a) 1.0)
+               90)
+  #+end_src
+
+  #+RESULTS:
+  : 0.6180339887498948
+
+  This was a very interesting iterative function to write because
+  it required going "backwards". In other words, we started at
+  the bottom of the k-term finite continued fraction, passing
+  this value as our accumulator. In the recursive version, this
+  would have been our base case return value. Then, we work our
+  way /up/ the fraction until we reach the top. There are some
+  recursive procedures whose iterative counterparts must pass the
+  recursive procedure's base case return value as its
+  accumulator and make steps in the direction opposite to the
+  recursive procedure. ~cont-frac~ is one of these procedures. If
+  the iterative implementation of ~cont-frac~ made its steps in
+  the same direction as the recursive implementation, it would
+  need the final value of the denominator to operate on the
+  accumulator. But, getting the final value of the denominator
+  would require a recursive call. An iterative implemenation must
+  not have a recursive call as an argument to a recursive call,
+  so this would not even be an iterative implementation.
+
+* Part B
+
+  Our previous implementation was iterative, so now we will
+  implement the recursive version.
+
+  #+header: :eval "no"
+  #+begin_src scheme
+    (define (cont-frac n d k)
+      (define (helper i)
+        (if (= i k)
+            (/ (n i) (d i))
+            (+ (d (sub1 i))
+               (/ (n i) (helper (add1 i))))))
+      (/ (n 1) (helper 2)))
+  #+end_src
+

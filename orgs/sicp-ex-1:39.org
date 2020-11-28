@@ -1,0 +1,43 @@
+*Exercise 1.39:* A continued fraction representation of the
+tangent function was published in 1770 by the German mathematician
+J.H. Lambert:
+
+                  x
+    tan x = ---------------
+                    x^2
+            1 - -----------
+                      x^2
+                3 - -------
+                    5 - ...
+
+where x is in radians.  Define a procedure `(tan-cf x k)' that
+computes an approximation to the tangent function based on
+Lambert's formula.  `K' specifies the number of terms to compute,
+as in *Note Exercise 1-37::.
+
+#+begin_src scheme :results list
+  (define (cont-frac n d k)
+    (define (helper i acc)
+      (if
+       (= i 1)
+       (/ (n 1) acc)
+       (helper
+        (sub1 i)
+        (+ (d (sub1 i))
+           (/ (n i) acc)))))
+    (helper (sub1 k) (/ (n k) (d k))))
+
+  (define (tan-cf x k)
+    (cont-frac
+     (lambda (m) (if (= m 1) x (* -1 (sqr x))))
+     (lambda (j) (sub1 (* j 2.0)))
+     k))
+
+  (list
+   (tan-cf (/ pi 4) 1000)
+   (tan-cf (/ pi 2) 1000))
+#+end_src
+
+#+RESULTS:
+- 1.0
+- +inf\.0

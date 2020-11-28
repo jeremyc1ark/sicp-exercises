@@ -1,0 +1,562 @@
+*Exercise 1.45:* We saw in section *Note 1-3-3:: that attempting
+to compute square roots by naively finding a fixed point of y |->
+x/y does not converge, and that this can be fixed by average
+damping.  The same method works for finding cube roots as fixed
+points of the average-damped y |-> x/y^2.  Unfortunately, the
+process does not work for fourth roots--a single average damp is
+not enough to make a fixed-point search for y |-> x/y^3 converge.
+On the other hand, if we average damp twice (i.e., use the average
+damp of the average damp of y |-> x/y^3) the fixed-point search
+does converge.  Do some experiments to determine how many average
+damps are required to compute nth roots as a fixed-point search
+based upon repeated average damping of y |-> x/y^(n-1).  Use this
+to implement a simple procedure for computing nth roots using
+`fixed-point', `average-damp', and the `repeated' procedure of
+*Note Exercise 1-43::.  Assume that any arithmetic operations you
+need are available as primitives.
+
+#+name: src-block
+#+begin_src scheme :results silent
+  (require math/statistics)
+
+  (define (compose a b)
+    (lambda (x) (a (b x))))
+
+  (define (repeated f n)
+    (define (helper count acc)
+      (if (= count n)
+          acc
+          (helper (add1 count) (compose f acc))))
+    (helper 1 f))
+
+  (define (average-damp f)
+    (lambda (x) (mean (list x (f x)))))
+
+  (define (z-root z n damp-times)
+    (fixed-point
+      ((repeated average-damp damp-times)
+        (lambda (q) (/ z (expt q (sub1 n)))))
+      1.0))
+
+  (define (experiment current-n damps n-hi [n-damp-pairs null])
+    (cond
+     ((= current-n n-hi) (reverse n-damp-pairs))
+     ((z-root 100000.0 current-n damps)
+      (experiment (add1 current-n)
+              2
+              n-hi
+              (cons (list current-n damps) n-damp-pairs)))
+     (else (experiment current-n (add1 damps) n-hi n-damp-pairs))))
+
+  (define (format-output first-n current-n current-damp prev-damp)
+    (cond
+     ((or (null? first-n) (null? prev-damp))
+      (~a "Root " current-n " used " current-damp " damps.\n"))
+     ((= (sub1 current-n) first-n)
+      (~a "Root " (sub1 current-n) " used " prev-damp " damps.\n"))
+     (else
+      (~a "Roots " first-n "-" (sub1 current-n) " used " prev-damp " damps.\n"))))
+
+  (define (pattern-finder lat [first-n null] [prev-damp null] [building-lat null])
+       (if
+        (= (length lat) 1)
+        (reverse (cons
+                  (format-output first-n (caar lat) (cadar lat) prev-damp)
+                  building-lat))
+        (let*
+            ([current-pair (car lat)]
+             [current-n (car current-pair)]
+             [current-damp (cadr current-pair)]
+             [rest (cdr lat)])
+          (cond
+           ((or (null? first-n) (null? prev-damp))
+            (pattern-finder rest current-n current-damp))
+           ((= prev-damp current-damp)
+            (pattern-finder rest first-n current-damp building-lat))
+           (else
+            (pattern-finder rest
+                            current-n
+                            current-damp
+                            (cons
+                             (format-output first-n current-n current-damp prev-damp)
+                             building-lat)))))))
+#+end_src
+
+#+begin_src scheme :noweb yes :results output
+  (define tolerance 0.00001)
+
+  (define (fixed-point f first-guess)
+    (define (close-enough? v1 v2)
+      (< (abs (- v1 v2)) tolerance))
+    (define (try guess [counter 0])
+      (let ([next (f guess)])
+        (cond
+         ((close-enough? guess next) next)
+         ((= counter 5000) #f)
+         (else (try next (add1 counter))))))
+    (try first-guess))
+
+  <<src-block>>
+
+  (map display (pattern-finder (experiment 2 1 100)))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Root 2 used 1 damps.
+Roots 3-7 used 2 damps.
+Roots 8-15 used 3 damps.
+Roots 16-23 used 4 damps.
+Root 24 used 3 damps.
+Roots 25-31 used 4 damps.
+Roots 32-46 used 5 damps.
+Root 47 used 3 damps.
+Roots 48-63 used 5 damps.
+Roots 64-90 used 6 damps.
+Roots 91-93 used 5 damps.
+Roots 94-97 used 6 damps.
+Root 98 used 5 damps.
+#+end_example
+
+This does not appear to show any deterministic pattern, unless
+I'm missing something. One would think that, as the root
+increases, the number of average dampings required to make the
+procedure converge would also increase. I think the problem with
+this method of experimentation lies in my implementation of
+~fixed-point~, which is why I excluded it from the main source
+block. ~fixed-point~ defines a sub-procedure callsed ~try~, which
+does the recursion and therefore most of the work in finding the
+fixed point of any given function. Earlier in the chapter, it was
+said that without enough average dampings on a root function, it
+will not converge. In other words, ~try~ would be in an infinite
+loop because it would always overshoot or undershoot the
+~close-enough?~ range. So, for the purposes of experimentation, I
+modified ~try~ to count its recursive calls and return ~#f~ if
+they exceed 4999. This would signal that to ~experiment~ that the
+current number of dampings was insuffiecient. My concern is that
+this may not be a high enough limit for some of the roots, like
+root 99. I could set a ludicrously high limit, but then all of
+the lower roots that were not converging would perform useless
+iterations and cause the experiment to take forever. Plus, I
+don't know what an approporiate limit would even be. Instead, I
+think we should rewrite ~try~ to store a cache of its previous
+guesses, and return them if it reaches a limit. Then, we can see
+if those large roots are actually making progress toward the
+~close-enough?~ range around 5000 recursive calls or if they are
+simply oscillating around the range. If they are oscillating,
+this could provide some insight into how we could write a
+procedure to detect a pattern of infinite oscillation.
+
+As we can see from the data, roots 98-99 needed 6 average
+dampings to guess within the ~close-enough?~ range before
+iterating 5000 times. Let's experiment with different numbers of
+average dampings and different limits. To do this, we need to
+rewrite some of the functions that we have used before so that we
+have more intropsection and more control over their internal
+processes.
+
+#+name: guess-deque
+#+begin_src scheme :noweb yes :results silent
+  ;; Racket has third-party data structure libraries with deque, but
+  ;; I\'m just making my own for simplicity. Using a deque to reduce
+  ;; memory usage in recursion.
+  (define (deque-add lat app)
+    (cdr (append lat (list app))))
+
+  (define tolerance 0.00001)
+
+  (define (fixed-point f first-guess max-count return-num-iterations? damp-times n b return-guess-list?)
+    (define (close-enough? v1 v2)
+      (< (abs (- v1 v2)) tolerance))
+    (define (try guess [counter 0] [prev-guesses (build-list 30 (lambda (r) 1))])
+      (let ([next (f guess)])
+        (cond
+         ((close-enough? guess next)
+          (cond
+           (return-num-iterations? (list counter next damp-times n b))
+           (return-guess-list? prev-guesses)
+           (else next)))
+         ((= counter max-count) prev-guesses)
+         (else (try next (add1 counter) (deque-add prev-guesses guess))))))
+    (try first-guess))
+
+  <<src-block>>
+
+  (define (b-root b n damp-times max-count return-num-iterations? return-guess-list?)
+    (fixed-point
+     ((repeated average-damp damp-times)
+      (lambda (q) (/ b (expt q (sub1 n)))))
+     1.0
+     max-count
+     return-num-iterations?
+     damp-times
+     n
+     b
+     return-guess-list?))
+#+end_src
+
+Now, we can do some interesting tests. First, let's find out
+whether our original recursion limit of 5000 was too low for the
+higher roots.
+
+#+begin_src scheme :noweb yes
+  <<guess-deque>>
+  (b-root 1000.0 98 4 100000 #f #f)
+#+end_src
+
+#+RESULTS:
+: 1.0730365383083673
+
+It turns out that our suspicions were right! The fact that
+~(b-root 1000.0 98 4 100000)~ returned a number instead of a list
+means that we do not /need/ 5 average dampings. However, our
+previous experimentation said that we needed 5 dampings because
+that was the lowest number of dampings we needed to find the
+fixed point in fewer that 5000 iterations of ~try~. What does
+this mean more generally?
+
+It means that as the number of average dampings increases, the
+number of iterations required to find a fixed point decreases. Or
+at least, up to a certain point.
+
+#+begin_src scheme :noweb yes :results value table :hlines yes
+  <<guess-deque>>
+
+  (define (formatter e)
+    (let* ([num-iterations (car e)]
+           [guess (cadr e)]
+           [num-damps (caddr e)]
+           [root (cadddr e)]
+           [orig-num (last e)]
+           [guess-to-root-power (expt guess root)]
+           [abs-diff (abs (- orig-num guess-to-root-power))]
+           [error (* 100 (/ abs-diff orig-num))])
+      (list
+          num-damps
+          num-iterations
+          abs-diff
+          error
+          root
+          orig-num)))
+
+  (cons (list "# dampings" "# iterations" "Abosulute difference" "Error (%)" "Root" "Original #")
+        (map formatter
+             (map
+              (lambda (r) (b-root 1000.0 98 (+ 4 r) 100000 #t #f))
+              (build-list 15 values))))
+#+end_src
+
+#+RESULTS:
+| # dampings | # iterations | Abosulute difference |            Error (%) | Root | Original # |
+|          4 |        68919 |   0.5113752628495831 | 0.051137526284958316 |   98 |     1000.0 |
+|          5 |         5594 |  0.11805057468393443 | 0.011805057468393443 |   98 |     1000.0 |
+|          6 |          185 |  0.19895085980181193 | 0.019895085980181193 |   98 |     1000.0 |
+|          7 |          275 |  0.09808183815187022 | 0.009808183815187022 |   98 |     1000.0 |
+|          8 |          402 |    1.309747573920049 |   0.1309747573920049 |   98 |     1000.0 |
+|          9 |          544 |    3.607834484552086 |   0.3607834484552086 |   98 |     1000.0 |
+|         10 |          672 |    8.609728147207761 |    0.860972814720776 |   98 |     1000.0 |
+|         11 |          751 |   18.057741514624013 |   1.8057741514624013 |   98 |     1000.0 |
+|         12 |          740 |    38.16635672695679 |   3.8166356726956794 |   98 |     1000.0 |
+|         13 |          573 |    80.91102952579786 |    8.091102952579785 |   98 |     1000.0 |
+|         14 |          271 |   131.35770747187212 |    13.13577074718721 |   98 |     1000.0 |
+|         15 |          478 |    233.0665786818522 |    23.30665786818522 |   98 |     1000.0 |
+|         16 |          642 |   379.49427770826594 |   37.949427770826595 |   98 |     1000.0 |
+|         17 |          791 |    551.1329184195836 |    55.11329184195836 |   98 |     1000.0 |
+|         18 |          903 |    711.7059802248777 |    71.17059802248778 |   98 |     1000.0 |
+
+Let's break these data down. I really wish Racket had a
+straightforward way to round decimals to a certain precision...
+
+I was interested in whether changing the number of dampings
+changes the margin of error, and it does. From 4 to 7 dampings,
+the change in the margin of error is negligible. From then
+on, it increases significantly.
+
+The number of dampings also affects the number of iterations
+required to find a root. If we use the minimum number of
+dampings (4), then we must do 68191 iterations. This number
+rapidly diminishes as we approach 6 average dampings, at which
+point we must do only 185 iterations. Then, the iterations slowly
+trend upwards.
+
+These data tell us that there is a 'sweet spot' in the number of
+dampings we should use for any given root. If we use the minimum
+number of dampings, we may not get the efficiency we are looking
+for. 68191 iterations is a lot!
+
+I used a minumum of 4 dampings because anything below that
+results in the oscillating behavior that SICP describes. I built
+in functionality to ~b-root~ so that we can see a list of its
+last 30 guesses before it reaches its recursion limit. Since
+we're only testing one root, we can set the recursion limit much
+higher. Let's see what happens when we use just 3 dampings.
+
+#+begin_src scheme :noweb yes :results list
+  <<guess-deque>>
+
+  (b-root 100000.0 98 3 1000000.0 #f #t)
+#+end_src
+
+#+RESULTS:
+- 11.16429950594917
+- 9.768762067705524
+- 8.547666809242333
+- 7.479208458087042
+- 6.5443074008261615
+- 5.726268975722891
+- 5.010485353757529
+- 4.384174684537838
+- 3.836152848970608
+- 3.356633742849282
+- 2.9370545249931217
+- 2.5699227093689814
+- 2.2486823706978587
+- 1.9675970743606264
+- 1.721647440065548
+- 1.5064415100573545
+- 1.3181363213002535
+- 1.153369310028436
+- 1.021387370788751
+- 1605.7387502246163
+- 1405.0214064465392
+- 1229.393730640722
+- 1075.7195143106317
+- 941.2545750218027
+- 823.5977531440774
+- 720.6480340010677
+- 630.5670297509342
+- 551.7461510320675
+- 482.77788215305907
+- 422.43064688392667
+
+So, even after a million iterations, ~b-root~ still has not found
+an answer that falls in the ~close-enough?~ range. It is apparent
+why when we look at its previous 30 guesses: the oscillating
+behavior. The guesses seem to get very close the the range, but
+then they suddenly explode and take many iterations to become
+reasonable again. This behavior is amplified if we use even fewer
+average dampings. Now, it is possible that after trillions of
+iterations, ~b-root~ happens to stumble upon a number within the
+desired range. We see that the guesses can become extremely
+large, but they are always driven down to reasonable guesses.
+Even when we use just one damping, we see the same pattern:
+
+#+begin_src scheme :noweb yes :results list
+  <<guess-deque>>
+
+  (b-root 100000.0 98 1 1000000.0 #f #t)
+#+end_src
+
+#+RESULTS:
+- 221084.4328134384
+- 110542.2164067192
+- 55271.1082033596
+- 27635.5541016798
+- 13817.7770508399
+- 6908.88852541995
+- 3454.444262709975
+- 1727.2221313549876
+- 863.6110656774938
+- 431.8055328387469
+- 215.90276641937345
+- 107.95138320968672
+- 53.97569160484336
+- 26.98784580242168
+- 13.49392290121084
+- 6.74696145060542
+- 3.37348072530271
+- 1.686740362651355
+- 0.8433701813256775
+- 750240579525.4907
+- 375120289762.74536
+- 187560144881.37268
+- 93780072440.68634
+- 46890036220.34317
+- 23445018110.171585
+- 11722509055.085793
+- 5861254527.542896
+- 2930627263.771448
+- 1465313631.885724
+- 732656815.942862
+
+/Do some experiments to determine how many average/
+/damps are required to compute nth roots as a fixed-point search/
+/based upon repeated average damping of y |-> x/y^(n-1)./
+
+The question asks to determine the /required/ number of damps,
+which I will interpret as the /minimum/ number of damps.
+Mathematically speaking, I believe that the /minimum/ number of
+damps is 0. Eventually, after an unfathomable number of
+iterations, a guess is bound to fall within the ~close-enough?~
+range. However, if we want to calculate a result within the next
+century, the definition of "minimum" changes. We want the minimum
+/feasible/ number of dampings: a number that can actually
+generate a result within a reasonable time frame. For root 98,
+this number was 4. So, let's analyze the final 30 guesses of a
+root 98 algorithm using four dampings and see if we can make some
+distinctions between reasonable and unreasonable algorithms.
+
+#+begin_src scheme :noweb yes :results list
+  <<guess-deque>>
+
+  (b-root 100000.0 98 4 1000000.0 #f #t)
+#+end_src
+
+#+RESULTS:
+- 2.488255958026041
+- 2.3327399606494135
+- 2.186943713108825
+- 2.0502597310395236
+- 1.9221184978495534
+- 1.8019860917339563
+- 1.689361961000584
+- 1.5837768384380473
+- 1.4847907860356697
+- 1.3919913619085797
+- 1.304991901862262
+- 1.223429946183421
+- 1.1469855596630392
+- 1.0857403648236719
+- 3.1581072672569643
+- 2.960725563053404
+- 2.7756802153625664
+- 2.6022002019024058
+- 2.4395626892835054
+- 2.2870900212032863
+- 2.144146894878081
+- 2.0101377139482013
+- 1.8845041068264388
+- 1.7667226001497864
+- 1.6563024376404247
+- 1.5527835352878983
+- 1.4557345643324064
+- 1.3647511540625792
+- 1.2794542074299098
+- 1.1994885791701022
+
+Looking at this list, I immediately notice something
+fundamentally different: the guesses monotonically decrease.
+There is no repeated steady decline, plateau and explosion like
+we've seen in other algorithms. We see the steady decline, but it
+stops because the final result falls within the desired range.
+Our other algorithms overshot this range, resulting in the
+seemingly infinite cycles we observed earlier. *In any reasonable*
+*root algorithm, the guesses decrease monotonically.*
+
+If we look at the guessing patterns of "unreasonable" algorithms,
+we see that once the guesses decrease past a certain threshold
+around 1, they "explode" and then steadily decrease. In the
+"reasonable" algorithms, we also see that, even though our
+original guess is 1.0, we descend on our answer, which is greater
+than 1.0. This leads me to believe that even reasonable
+algorithms "explode" at the beginning. Assuming that we are only
+finding the roots of numbers greater than 1, then the guesses
+will decrease monotonically after the explosion. So, we need to
+write a procedure that can detect the explosion and then ensure
+that all guesses after the explosion monotonically decrease. By
+the way, I am not bothering with finding the roots of numbers
+less than 1 because it's just a mess and does not contribute to
+the actual learning experience.
+
+#+name: x-root-src
+#+begin_src scheme :noweb yes :results silent
+  <<src-block>>
+
+  (define (fixed-point f first-guess)
+    (define tolerance 0.00001)
+    (define (close-enough? v1 v2)
+      (< (abs (- v1 v2)) tolerance))
+    (define (explosion guess)
+      (let ([next (f guess)])
+        (if (> next guess)
+            (explosion next)
+            next)))
+    (define (try guess)
+      (let ([next (f guess)])
+        (cond
+         ((close-enough? guess next) next)
+         ((> next guess) #f)
+         (else (try next)))))
+    (try (explosion first-guess)))
+
+  (define (x-root n)
+    (define (helper damp-times max-damps)
+      (cond
+       ((= damp-times max-damps) #f)
+       ((fixed-point
+         ((repeated average-damp damp-times)
+          (lambda (q) (/ 100000.0 (expt q (sub1 n)))))
+         1.0)
+        (list n damp-times))
+       (else (helper (add1 damp-times) max-damps))))
+    (helper 1 10))
+#+end_src
+
+#+begin_src scheme :noweb yes :results output
+  <<x-root-src>>
+
+  (map display
+       (pattern-finder
+        (map x-root
+             (build-list 200 (lambda (e) (+ 2 e))))))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Root 2 used 1 damps.
+Roots 3-4 used 2 damps.
+Roots 5-8 used 3 damps.
+Roots 9-16 used 4 damps.
+Roots 17-32 used 5 damps.
+Roots 33-69 used 6 damps.
+Roots 70-136 used 7 damps.
+Roots 137-153 used 8 damps.
+Roots 154-155 used 7 damps.
+Roots 156-200 used 8 damps.
+#+end_example
+
+I was hoping that this would be a simple, quadratic pattern
+where the number of dampings required increments by 1 every time
+the root doubles. It looks like this was roughly the case for a
+little while, but then the pattern fell apart as we got into the
+larger roots. So, we did not really get the simplicity we were
+hoping for. It looks like we will have to use ~x-root~ to
+determine the number of dampings needed. We will use ~x-root~ to
+implement our final procedure, ~n-root~, which takes a root, ~n~,
+and returns a procedure which can calculate the ~n~\th root of
+any number > 1.
+
+#+begin_src scheme :noweb yes :results value
+  <<x-root-src>>
+
+  (define (final-fixed-point f first-guess)
+    (define tolerance 0.00001)
+    (define (close-enough? v1 v2)
+      (< (abs (- v1 v2)) tolerance))
+    (define (try guess)
+      (let ([next (f guess)])
+        (if
+         (close-enough? guess next)
+         next
+         (try next))))
+    (try first-guess))
+
+  (define (n-root n)
+    (let* ([num-damps (cadr (x-root n))]
+           [damping-f (repeated average-damp num-damps)])
+      (define (helper b)
+        (fixed-point
+         (damping-f
+          (lambda (q) (/ b (expt q (sub1 n)))))
+         1.0))
+      helper))
+
+
+  (expt ((n-root 50) 1000.0) 50)
+#+end_src
+
+#+RESULTS:
+: 1000.1010683859739
+
+It works! Now I can finally move on to another problem. I have
+been working on this for way too long.

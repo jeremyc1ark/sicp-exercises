@@ -1,0 +1,27 @@
+*Exercise 1.41:* Define a procedure `double' that takes a
+procedure of one argument as argument and returns a procedure that
+applies the original procedure twice.  For example, if `inc' is a
+procedure that adds 1 to its argument, then `(double inc)' should
+be a procedure that adds 2.  What value is returned by
+
+    (((double (double double)) inc) 5)
+
+#+begin_src scheme
+  (define (double p)
+    (lambda (x) (p (p x))))
+
+  (((double (double double)) add1) 5)
+#+end_src
+
+#+RESULTS:
+: 21
+
+This makes sense. If we temporarily think of ~double~ as the
+number 2, and an application of double to itself as multiplying,
+then we can see that there are three twos, resulting in:
+
+2 * 2 * 2 = 2 ^ 3 = 8
+
+So, now we have the equivelent of 8 ~double~\s operating on
+~inc~, resulting in 16 ~inc~\s. So, ~add1~ gets applied to 5 16
+times, which results in 21.
