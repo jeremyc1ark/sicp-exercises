@@ -1,0 +1,64 @@
+*Exercise 2.22:* Louis Reasoner tries to rewrite the first
+`square-list' procedure of *Note Exercise 2-21:: so that it
+evolves an iterative process:
+
+    (define (square-list items)
+      (define (iter things answer)
+        (if (null? things)
+            answer
+            (iter (cdr things)
+                  (cons (square (car things))
+                        answer))))
+      (iter items nil))
+
+Unfortunately, defining `square-list' this way produces the answer
+list in the reverse order of the one desired.  Why?
+
+Louis then tries to fix his bug by interchanging the arguments to
+`cons':
+
+    (define (square-list items)
+      (define (iter things answer)
+        (if (null? things)
+            answer
+            (iter (cdr things)
+                  (cons answer
+                        (square (car things))))))
+      (iter items nil))
+
+This doesn't work either.  Explain.
+
+* Part 1
+  Let's think about how Reasoner's first implementation would
+  work. First, it calls ~iter~ with arguments ~items~ and ~nil~
+  for parameters ~things~ and ~answer~, respectively. This call
+  to ~iter~ first asks if ~things~ is null (empty). It is not, so
+  we move onto the ~else~ statement. Here, we perform a recursive
+  call to ~iter~. The argument for the parameter ~things~ is the
+  ~cdr~ of the current calue for ~things~. In other words, it's
+  just the rest of the list. This seems good enough so far. It's
+  the next parameter where we run into trouble. Here, we ~cons~
+  the square of the first element of ~items~ into ~answer~.
+  Remember, ~cons~ inserts its first argument into the beginning
+  of the second argument. So, as we continue iterating, the most
+  recently visited element will be the first in the ~things~
+  parameter. By the time we reach the end, the most recently
+  visited element will be the last element ~square-list~'s value
+  for items, and the least recently visited element will be the
+  first. In other words, our list will be reversed.
+
+* Part 2
+  Everything else in this implementation is the same as the last
+  except for the argument for the ~answer~ parameter in the
+  recursive call of ~iter~. This obviously does not work. On the
+  first iteration, we are ~cons~\ing ~nil~ into the square of the
+  first element, which will result in a pair with ~nil~ as the
+  first value and the square as the second. When we perform
+  another iteration, we cons this pair into the square of the
+  second element. This creates a new pair with the original pair
+  as the first value and square of the second element as the
+  second. This pattern will continue until the end of the list.
+  In attempting to mitigate the situation, Reasoner has inadvertently
+  exacerbated it. The result of the second implementation would
+  be a reversed list of nested pairs, rather than simply a
+  reversed list.

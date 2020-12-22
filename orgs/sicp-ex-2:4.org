@@ -1,0 +1,52 @@
+*Exercise 2.4:* Here is an alternative procedural representation
+of pairs.  For this representation, verify that `(car (cons x y))'
+yields `x' for any objects `x' and `y'.
+
+    (define (cons x y)
+      (lambda (m) (m x y)))
+
+    (define (car z)
+      (z (lambda (p q) p)))
+
+What is the corresponding definition of `cdr'? (Hint: To verify
+that this works, make use of the substitution model of section
+*Note 1-1-5::.)
+
+#+begin_src scheme :results list
+  (define (cons x y)
+    (lambda (m) (m x y)))
+
+  (define (car z)
+    (z (lambda (p q) p)))
+
+  (define (cdr z)
+    (z (lambda (p q) q)))
+
+  (list
+   (car (cons 5 6))
+   (cdr (cons 5 6)))
+#+end_src
+
+#+RESULTS:
+- 5
+- 6
+
+Let's break down how this actually works. At first glance, this
+implementation is kind of confusing.
+
+#+header: :eval "no"
+#+begin_src scheme
+  (car (cons 5 6))
+
+  (car (lambda (m) (m 5 6)))
+
+  ((lambda (m) (m 5 6)) (lambda (p q) p))
+
+  ((lambda (p q) p) 5 6)
+
+  5
+#+end_src
+
+The process is very similar for ~cdr~, except ~cdr~'s ~lambda~
+procedure returns ~q~ instead of ~p~. This is a very interesting
+implementation.

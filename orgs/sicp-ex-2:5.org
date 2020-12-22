@@ -1,0 +1,32 @@
+*Exercise 2.5:* Show that we can represent pairs of nonnegative
+integers using only numbers and arithmetic operations if we
+represent the pair a and b as the integer that is the product 2^a
+3^b.  Give the corresponding definitions of the procedures `cons',
+`car', and `cdr'.
+
+#+begin_src scheme :results list
+  (define (cons a b)
+    (* (expt 2 a) (expt 3 b)))
+
+  (define (car z)
+    (define (helper z [count 0])
+      (if (zero? (modulo z 2))
+          (helper (/ z 2) (add1 count))
+          count))
+    (helper z))
+
+  (define (cdr z)
+    (define (helper z [count 0])
+      (if (zero? (modulo z 3))
+          (helper (/ z 3) (add1 count))
+          count))
+    (helper z))
+
+  (list
+   (car (cons 34 17))
+   (cdr (cons 34 17)))
+#+end_src
+
+#+RESULTS:
+- 34
+- 17

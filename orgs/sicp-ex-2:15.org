@@ -1,0 +1,84 @@
+*Exercise 2.15:* Eva Lu Ator, another user, has also noticed the
+different intervals computed by different but algebraically
+equivalent expressions. She says that a formula to compute with
+intervals using Alyssa's system will produce tighter error bounds
+if it can be written in such a form that no variable that
+represents an uncertain number is repeated.  Thus, she says,
+`par2' is a "better" program for parallel resistances than `par1'.
+Is she right?  Why?
+
+Lu Ator is correct. Interval arithmetic is not like integer
+arithmetic. For example, consider the formula
+
+f(a, b) = a * b
+
+/f/ could be rewritten as
+
+j(a, b) = (a * b * a * b * a * b) / (a * b * a * b)
+
+With interval arithmetic, /f/ and /b/ are algebraically
+equivalent. For example,
+
+f(4, 5) = 4 * 5
+
+= 20
+
+j(4, 5) = (4 * 5 * 4 * 5 * 4 * 5) / (4 * 5 * 4 * 5)
+
+= (20 * 20 * 20) / (20 * 20)
+
+= 8000 / 400
+
+= 20
+
+Of course, that is pretty obvious. However, the same principal
+does not apply to interval arithmetic. Consider the intervals
+(3, 5) and (7, 11).
+
+f((3, 5), (7, 11)) = (3, 5) * (7, 11)
+
+= (21, 55)
+
+j((3, 5), (7, 11)) = ((3, 5) * (7, 11) * (3, 5) * (7, 11) *
+(3, 5) * (7, 11)) / ((3, 5) * (7, 11) * (3, 5) * (7, 11))
+
+= ((21, 55) * (3, 5) * (7, 11) * (3, 5) * (7, 11)) / ((21, 55) *
+(3, 5) * (7, 11))
+
+= ((63, 275) * (7, 11) * (3, 5) * (7, 11)) / ((63, 275) * (7,
+11))
+
+= ((441, 3025) * (3, 5) * (7, 11)) / (441, 3025)
+
+= ((441, 3025) * (3, 5) * (7, 11)) / (441, 3025)
+
+= ((1323, 15125) * (7, 11)) / (441, 3025)
+
+= (9261, 166375) / (441, 3025)
+
+= (9261, 166375) * (1/3025, 1/441)
+
+= (9261, 166375) * (1/3025, 1/441)
+
+= (9261 * (1/3025), 166375 * (1/441))
+
+= (9261/3025, 166375/441)
+
+≅ (3.06, 377.27)
+
+So, even though the functions are algebraically identical, their
+outputs are astronomically different.
+
+We know for certain that the product of the intervals (3, 5) and
+(7, 11) is (21, 55) because the lowest possible result is 3 * 7 =
+21 and the highest possible result is 5 * 11 = 55. So, /f/
+produces the correct answer and /j/ produces the wrong answer.
+This is because the current system "will produce tigher error
+bounds if it can be written in such a form that no variable that
+represents an uncertain number is repeated." We have seen that
+repeating variables that represent uncertain numbers will result
+in larger error bounds in our implementation of /j/. This is
+because /j/ accounts for the uncertainty of /a/ and /b/ multiple
+times. Ideally, we should only consider the uncertainty of a
+variable once. This explains why ~par2~ is a better program for
+parallel resistance; it only uses each variable once.

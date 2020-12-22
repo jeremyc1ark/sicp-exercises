@@ -1,0 +1,46 @@
+*Exercise 2.13:* Show that under the assumption of small
+percentage tolerances there is a simple formula for the approximate
+percentage tolerance of the product of two intervals in terms of
+the tolerances of the factors.  You may simplify the problem by
+assuming that all numbers are positive.
+
+I am going to assume that the centers of the factors are also
+given because otherwise it would be impossible to compute this.
+Similar to Exercise 2.9, pairs (3, 4), (9342, 438423) and
+(34, 234) could all have tolerances of 3% and 1.5%, respectively.
+If we were only given the tolerances, we would need to create
+deterministic procedure that produces different values with the
+same sets of input. This is impossible. So, let's assume that we
+have both the centers and tolerances for the factors.
+
+With these inputs, we can derive the intervals of the factors
+using our previously defined procedure ~make-center-percent~.
+Because we know that all the numbers are positive, we can use
+these intervals to find the lower bound of the product by
+multiplying the lower bound of both intervals. We can determine
+the center of the product by multiplying the two centers. Now, we
+have a center and a lower bound, which is all we need to
+determine tolerance. We subtract the lower bound from the center,
+and divide this by the center. Then, multiply this by 100 and we
+are done.
+
+#+begin_src scheme
+  (define (make-interval a b) (cons a b))
+  (define (lower-bound interval) (car interval))
+  (define (upper-bound interval) (cdr interval))
+
+   (define (make-center-percent center tolerance)
+    (let ([change (* center (/ tolerance 100.0))])
+      (make-interval (- center change) (+ center change))))
+
+  (define (mul-tolerance c1 c2 t1 t2)
+    (let ([i1 (make-center-percent c1 t1)]
+          [i2 (make-center-percent c2 t2)]
+          [reg-mul (* c1 c2)])
+      (* 100 (/ (- reg-mul (* (lower-bound i1) (lower-bound i2))) reg-mul))))
+
+  (mul-tolerance 5 9 2 5)
+#+end_src
+
+#+RESULTS:
+: 6.899999999999993

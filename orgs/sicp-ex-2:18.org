@@ -1,0 +1,20 @@
+*Exercise 2.18:* Define a procedure `reverse' that takes a list as
+argument and returns a list of the same elements in reverse order:
+
+  (reverse (list 1 4 9 16 25))
+  (25 16 9 4 1)
+
+#+header: :eval "no"
+#+begin_src scheme
+  (define (reverse lat [new-lat null])
+    (if (null? lat)
+        new-lat
+        (reverse (cdr lat) (cons (car lat) new-lat))))
+
+  (reverse (list 1 4 9 16 25))
+#+end_src
+
+I am not evaluating this because for some reason org-mode is
+being glitchy. This code works as expected in a regular Racket
+REPL, but for some reason it does not work in org-mode Babel.
+This is a correct solution to the problem though.

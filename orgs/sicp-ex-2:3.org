@@ -1,0 +1,68 @@
+*Exercise 2.3:* Implement a representation for rectangles in a
+plane.  (Hint: You may want to make use of *Note Exercise 2-2::.)
+In terms of your constructors and selectors, create procedures
+that compute the perimeter and the area of a given rectangle.  Now
+implement a different representation for rectangles.  Can you
+design your system with suitable abstraction barriers, so that the
+same perimeter and area procedures will work using either
+representation?
+
+#+begin_src scheme
+  (require math/statistics)
+
+  (define (make-segment a b) (cons a b))
+  (define (start-segment s) (car s))
+  (define (end-segment s) (cdr s))
+
+  (define (point x y) (cons x y))
+  (define (x-point p) (car p))
+  (define (y-point p) (cdr p))
+
+  (define (seg-hash seg)
+    (make-hash (list (cons "start" (start-segment seg))
+                     (cons "end" (end-segment seg))
+                     (cons "start-x" (x-point start))
+                     (cons "start-y" (y-point start))
+                     (cons "end-x" (x-point end))
+                     (cons "end-y" (y-point end)))))
+
+  (define (midpoint-segment s)
+    (let ([hash-tab (seg-hash s)])
+      (point (mean (list (hash-ref "start-x" hash-tab)
+                         (hash-ref "end-x" hash-tab)))
+             (mean (list (hash-ref "start-y" hash-tab)
+                         (hash-ref "end-y" hash-tab))))))
+
+  (define (rectangle-a seg1 seg2)
+    (cons seg1 seg2))
+
+  (define (rectangle-b seg) seg)
+
+  (define (2-segs rec)
+    (if (= 8 (length (flatten rec)))
+        rec
+        (let* ([hash-tab (seg-hash rec)]
+               [start-point (point (hash-ref "start-x" hash-tab) (hash-ref "start-y" hash-tab))])
+          (rectangle-a
+           (make-segment start-point
+                         (point (hash-ref "end-x" hash-tab) (hash-ref "start-y" hash-tab)))
+           (make-segment start-point
+                         (point (hash-ref "start-x" hash-tab) (hash-ref "end-y" hash-tab)))))))
+
+  (define (seg-len seg)
+    (sqrt (+
+           (sqr
+            (abs (- (x-point (end-segment seg))
+                    (x-point (start-segment seg)))))
+           (sqr
+            (abs (- (y-point (end-segment seg))
+                    (y-point (start-segment seg))))))))
+
+  (define (perimeter rec)
+    (let ([segs (2-segs rec)])
+      (* 2 (+ (seg-len (car segs)) (seg-len (cdr segs))))))
+
+  (define (area rec)
+    (let ([segs (2-segs rec)])
+      (* (seg-len (car segs)) (seg-len (cdr segs)))))
+#+end_src

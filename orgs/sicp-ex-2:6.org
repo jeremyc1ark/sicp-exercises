@@ -1,0 +1,116 @@
+*Exercise 2.6:* In case representing pairs as procedures wasn't
+mind-boggling enough, consider that, in a language that can
+manipulate procedures, we can get by without numbers (at least
+insofar as nonnegative integers are concerned) by implementing 0
+and the operation of adding 1 as
+
+    (define zero (lambda (f) (lambda (x) x)))
+
+    (define (add-1 n)
+      (lambda (f) (lambda (x) (f ((n f) x)))))
+
+This representation is known as "Church numerals", after its
+inventor, Alonzo Church, the logician who invented the [lambda]
+calculus.
+
+Define `one' and `two' directly (not in terms of `zero' and
+`add-1').  (Hint: Use substitution to evaluate `(add-1 zero)').
+Give a direct definition of the addition procedure `+' (not in
+terms of repeated application of `add-1').
+
+#+name: src-block
+#+begin_src scheme :results silent
+  (define zero (lambda (f) (lambda (x) x)))
+
+  (define (add-1 n)
+    (lambda (f) (lambda (x) (f ((n f) x)))))
+#+end_src
+
+Let's use substitution to determine the representation for ~one~.
+
+#+header :eval "no"
+#+begin_src scheme
+  ;; 1 is still the result of incrementing 0 by one, even though
+  ;; we are representing 1 in an unconventional manner.
+  (add-1 zero)
+
+  ;; This is not the correct application order but it is more
+  ;; intuitve and produces the same result.
+  ((lambda (n) (lambda (f) (lambda (x) (f ((n f) x))))) zero)
+
+  (lambda (f) (lambda (x) (f ((zero f) x))))
+
+  (lambda (f) (lambda (x) (f (((lambda (f) (lambda (x) x)) f) x))))
+
+  (lambda (f) (lambda (x) (f ((lambda (x) x) x))))
+
+  (lambda (f) (lambda (x) (f x)))
+
+  (define one (lambda (f) (lambda (x) (f x))))
+#+end_src
+
+Then, we can use this definition to find the representation for
+~two~.
+
+#+header :eval "no"
+#+begin_src scheme
+  (add-1 one)
+
+  ((lambda (n) (lambda (f) (lambda (x) (f ((n f) x))))) one)
+
+  (lambda (f) (lambda (x) (f ((one f) x))))
+
+  (lambda (f) (lambda (x) (f (((lambda (f) (lambda (x) (f x))) f) x))))
+
+  (lambda (f) (lambda (x) (f ((lambda (x) (f x)) x))))
+
+  (lambda (f) (lambda (x) (f (f x))))
+
+  (define two (lambda (f) (lambda (x) (f (f x)))))
+#+end_src
+
+Now, we can see a pattern emerging. For any positive real integer
+/n/, the Church Numeral representation is ~f~ applied to ~x~ /n/
+times. If we wanted to convert from a Church Numeral to an
+integer representation, we would set ~x~ to 0 and ~f~ to an
+increment procedure. This would generate a process that would
+increment 0 /n/ times, getting us back to the original number.
+This is not part of the exercise, but I thought I would give it a
+try.
+
+#+name: conversions
+#+begin_src scheme :noweb yes :results silent
+  <<src-block>>
+  (define (inc x) (add1 x))
+
+  (define (int->church n [f zero])
+    (if (zero? n)
+        f
+        (int->church (sub1 n) (add-1 f))))
+
+  (define (church->int n)
+    ((n inc) 0))
+#+end_src
+
+#+begin_src scheme :noweb yes
+  <<conversions>>
+  (church->int (int->church 9))
+#+end_src
+
+#+RESULTS:
+: 9
+
+To add two Church Numerals /a/ and /b/, we need a procedure that
+will return a procedure with the number of calls to ~f~ in both
+/a/ and /b/ applied to themselves.
+
+#+begin_src scheme :noweb yes
+  <<conversions>>
+  (define (+ a b)
+    (lambda (f) (lambda (x) ((a f) ((b f) x)))))
+
+  (church->int (+ (int->church 5) (int->church 7)))
+#+end_src
+
+#+RESULTS:
+: 12

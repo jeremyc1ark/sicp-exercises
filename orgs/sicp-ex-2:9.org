@@ -1,0 +1,68 @@
+*Exercise 2.9:* The "width" of an interval is half of the
+difference between its upper and lower bounds.  The width is a
+measure of the uncertainty of the number specified by the
+interval.  For some arithmetic operations the width of the result
+of combining two intervals is a function only of the widths of the
+argument intervals, whereas for others the width of the
+combination is not a function of the widths of the argument
+intervals.  Show that the width of the sum (or difference) of two
+intervals is a function only of the widths of the intervals being
+added (or subtracted).  Give examples to show that this is not
+true for multiplication or division.
+
+* Width of Sum
+  Let's say that we are adding integers 543 and 229 with widths
+  (510, 550) and (223, 234), respectively. We already have a
+  procedure which will return the interval of the sum using the
+  intervals of the addends, which we can then use to determine the
+  width.
+
+  Lower bound of the sum: 510 + 223 = 733
+
+  Upper bound of the sum: 550 + 234 = 784
+
+  Difference between bounds: 784 - 733 = 51
+
+  Width of the sum: 51 / 2 = 25.5
+
+  So, we know that we can determine the width of the sum using the
+  intervals of the addends. But can we achieve the same result
+  using only the widths of the addends? Yes. First, let's calculate
+  the widths of the addends.
+
+  Width A: (550 - 510) / 2 = 20
+
+  Width B: (234 - 223) / 2 = 5.5
+
+  Then, using only the widths of the addends, we can compute the
+  width of the sum.
+
+  Width of sum = 20 + 5.5
+
+* Width of Product
+  Let's use the same values as the previous section for this
+  section. We could think of multiplication as a function of
+  adding. For example, the product of 543 and 229 the the result
+  of adding 229 to 0 543 times or 543 to 0 229 times. We have
+  just proven that to determine the width of a sum, you only need
+  the widths of its addends. So, if multiplication can be
+  translated to addition, why can't we do the same for
+  multiplication?
+
+  In order to expand the expression 8 * 5 into the form of
+  addition, we need to know both the factors One will tell us the
+  length of the expression and the other will tell us the value
+  of the expression's components. For example, we can derive
+
+  8 + 8 + 8 + 8 + 8
+
+  from 8 * 5 because we know that it must be a 5-value long
+  expression with each value being 8. We got that information
+  from the original expression. If we were only given the widths
+  of 8 and 5, we would not be able to compute the width of their
+  product. Pairs (8, 5), (9, 4), (23, 2342) and (53453, 38493280)
+  could all have widths of 43 and 98, respectively. The widths of
+  the products of these pairs are obviously wildly different, but
+  the widths of the factors are all the same. Therefore, we can
+  conclude that no procedure exists that takes only the widths of
+  two factors and returns the width of the product.

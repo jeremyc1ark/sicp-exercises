@@ -1,0 +1,14 @@
+*Exercise 2.12:* Define a constructor `make-center-percent' that
+takes a center and a percentage tolerance and produces the desired
+interval.  You must also define a selector `percent' that produces
+the percentage tolerance for a given interval.  The `center'
+selector is the same as the one shown above.
+
+#+header: eval: "no"
+#+begin_src scheme
+  (define (make-interval a b) (cons a b))
+
+  (define (make-center-percent center tolerance)
+    (let ([change (* center (/ tolerance 100))])
+      (make-interval (- center change) (+ center change))))
+#+end_src
