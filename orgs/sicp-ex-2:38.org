@@ -1,0 +1,108 @@
+#+TITLE: Exercise 2.38
+The `accumulate' procedure is also known as `fold-right', because
+it combines the first element of the sequence with the result of
+combining all the elements to the right.  There is also a
+`fold-left', which is similar to `fold-right', except that it
+combines elements working in the opposite direction:
+
+    (define (fold-left op initial sequence)
+        (define (iter result rest)
+            (if (null? rest)
+                result
+                (iter (op result (car rest))
+                    (cdr rest))))
+        (iter initial sequence))
+
+What are the values of
+
+    (fold-right / 1 (list 1 2 3))
+
+    (fold-left / 1 (list 1 2 3))
+
+    (fold-right list nil (list 1 2 3))
+
+    (fold-left list nil (list 1 2 3))
+
+Give a property that `op' should satisfy to guarantee that
+`fold-right' and `fold-left' will produce the same values for any
+sequence.
+
+#+name: src-block
+#+begin_src scheme :results silent
+(define (fold-left op initial sequence)
+    (define (iter result remaining)
+            (if (null? remaining)
+                result
+                (iter (op result (car remaining))
+                    (cdr remaining))))
+    (iter initial sequence))
+
+(define (fold-right op initial sequence)
+   (if (null? sequence)
+       initial
+       (op (car sequence)
+           (fold-right op initial (cdr sequence)))))
+
+(define my-list (list 1 2 3))
+#+end_src
+
+Defined above are ~fold-right~ and ~fold-left~. ~fold-left~
+initially operates on the leftmost element of the sequence with
+~(op result (car remaining))~ and uses this as an accumulator to
+perform all operations to the right. ~fold-right~ defers
+operations until the rightmost element of this list, where it
+applies ~op~ and then uses this as an accumulator for all
+operations to the left. Essentially, they accumulate the
+arguments in different orders. Below, we can see that order of
+operations can affect the final result.
+
+#+begin_src scheme :noweb yes :results output
+<<src-block>>
+
+(define results
+  (list
+   (fold-right / 1 my-list)
+   (fold-left / 1 my-list)
+   (fold-right list null my-list)
+   (fold-left list null my-list)))
+
+(for ([elem results])
+  (display (~a elem "\n")))
+#+end_src
+
+#+RESULTS:
+: 3/2
+: 1/6
+: (1 (2 (3 ())))
+: (((() 1) 2) 3)
+
+In the case of division, the order of operations is important.
+1/2 is not the same as 2/1. The same is true for ~list~. ~(list 1
+2)~ is not the same as ~(list 2 1)~. Because ~fold-right~ and
+~fold-left~ apply operations in opposite orders, the results are
+different. If we wanted the results of ~fold-right~ and
+~fold-left~ to be equal, we would need an operator with the
+commutative property. That is, an operation that will yield the
+same result irrespective of the order of its operands. Addition
+and multiplication are two examples of operations with the
+commutative property.
+
+#+begin_src scheme :noweb yes :results output
+<<src-block>>
+
+(define results
+  (list
+   (fold-right * 1 my-list)
+   (fold-left * 1 my-list)
+   (fold-right + 0 my-list)
+   (fold-left + 0 my-list)))
+
+(for ([elem results])
+  (display (~a elem "\n")))
+#+end_src
+
+#+RESULTS:
+: 6
+: 6
+: 6
+: 6

@@ -1,0 +1,26 @@
+#+TITLE: Exercise 2.35
+Redefine `count-leaves' from section *Note 2-2-2:: as an
+accumulation:
+
+    (define (count-leaves t)
+        (accumulate <??> <??> (map <??> <??>)))
+
+#+begin_src scheme
+(define (count-leaves t)
+  (foldr +
+         0
+         (map (lambda (a)
+                (if (not (list? a))
+                    1
+                    (count-leaves a))) t)))
+(define my-tree
+  (list (list 2 (list 3 6)) (list (list 5 6) (list 9 10))))
+
+(count-leaves my-tree)
+#+end_src
+
+#+RESULTS:
+: 7
+
+Instead of using pairs, I used lists because ~map~ does not work
+on pairs in Racket.

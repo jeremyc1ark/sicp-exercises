@@ -1,0 +1,39 @@
+#+TITLE: Exercise 2.33
+Fill in the missing expressions to complete the following
+definitions of some basic list-manipulation operations as
+accumulations:
+
+    (define (map p sequence)
+        (accumulate (lambda (x y) <??>) nil sequence))
+
+    (define (append seq1 seq2)
+        (accumulate cons <??> <??>))
+
+    (define (length sequence)
+        (accumulate <??> 0 sequence))
+
+#+begin_src scheme :results output
+(define (my-map p seq)
+  (foldr (lambda (x y) (cons (p x) y)) null seq))
+
+(define (my-append seq1 seq2)
+    (foldr cons seq2 seq1))
+
+(define (my-length seq)
+    (foldr (lambda (x y) (+ 1 y)) 0 seq))
+
+(define test-list (list 3 4 5 1 9))
+
+(define all-results
+  (list (my-map sqr test-list)
+        (my-append test-list (list 80 90 100))
+        (my-length test-list)))
+
+(for ([elem all-results])
+  (display (~a elem "\n")))
+#+end_src
+
+#+RESULTS:
+: (9 16 25 1 81)
+: (3 4 5 1 9 80 90 100)
+: 5

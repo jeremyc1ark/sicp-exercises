@@ -1,0 +1,51 @@
+#+TITLE: Exercise 2.39
+Complete the following definitions of `reverse' (*Note Exercise
+2-18::) in terms of `fold-right' and `fold-left' from *Note
+Exercise 2-38:::
+
+    (define (reverse sequence)
+        (fold-right (lambda (x y) <??>) nil sequence))
+
+    (define (reverse sequence)
+        (fold-left (lambda (x y) <??>) nil sequence))
+
+#+name: src-block
+#+begin_src scheme :results silent
+(define (fold-left op initial sequence)
+    (define (iter result remaining)
+            (if (null? remaining)
+                result
+                (iter (op result (car remaining))
+                    (cdr remaining))))
+    (iter initial sequence))
+
+(define (fold-right op initial sequence)
+   (if (null? sequence)
+       initial
+       (op (car sequence)
+           (fold-right op initial (cdr sequence)))))
+#+end_src
+
+#+begin_src scheme :noweb yes :results output
+<<src-block>>
+
+(define (my-reverse sequence)
+    (fold-right (lambda (x y) (append y (list x))) null sequence))
+
+(display (my-reverse (list 1 2 3)))
+#+end_src
+
+#+RESULTS:
+: (3 2 1)
+
+#+begin_src scheme :noweb yes :results output
+<<src-block>>
+
+(define (my-reverse sequence)
+    (fold-left (lambda (x y) (append (list y) x)) null sequence))
+
+(display (my-reverse (list 1 2 3)))
+#+end_src
+
+#+RESULTS:
+: (3 2 1)

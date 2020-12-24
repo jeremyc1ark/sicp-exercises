@@ -1,0 +1,44 @@
+#+TITLE: Exercise 2.36
+
+The procedure `accumulate-n' is similar to `accumulate' except
+that it takes as its third argument a sequence of sequences,
+which are all assumed to have the same number of elements.  It
+applies the designated accumulation procedure to combine all the
+first elements of the sequences, all the second elements of the
+sequences, and so on, and returns a sequence of the results.  For
+instance, if `s' is a sequence containing four sequences, `((1
+2 3) (4 5 6) (7 8 9) (10 11 12)),' then the value of
+`(accumulate-n + 0 s)' should be the sequence `(22 26 30)'. Fill
+in the missing expressions in the following definition of
+`accumulate-n':
+
+    (define (accumulate-n op init seqs)
+        (if (null? (car seqs))
+            nil
+            (cons (accumulate op init <??>)
+                    (accumulate-n op init <??>))))
+
+#+begin_src scheme :results output
+(define (get-cars s)
+  (map (lambda (x) (car x)) s))
+
+(define (get-cdrs s)
+  (map (lambda (x) (cdr x)) s))
+
+(define (accumulate-n op initial seqs)
+    (if (null? (car seqs))
+        null
+        (cons (foldr op initial (get-cars seqs))
+                (accumulate-n op initial (get-cdrs seqs)))))
+(define my-lat
+  (list
+    (list 1 2 3)
+    (list 4 5 6)
+    (list 7 8 9)
+    (list 10 11 12)))
+
+(display (accumulate-n + 0 my-lat))
+#+end_src
+
+#+RESULTS:
+: (22 26 30)
