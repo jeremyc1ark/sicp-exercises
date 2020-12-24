@@ -1,0 +1,51 @@
+*Exercise 2.27:* Modify your `reverse' procedure of *Note Exercise
+2-18:: to produce a `deep-reverse' procedure that takes a list as
+argument and returns as its value the list with its elements
+reversed and with all sublists deep-reversed as well.  For example,
+
+    (define x (list (list 1 2) (list 3 4)))
+
+    x
+    ((1 2) (3 4))
+
+    (reverse x)
+    ((3 4) (1 2))
+
+    (deep-reverse x)
+    ((4 3) (2 1))
+
+#+begin_src scheme :results list
+(define (my-reverse lat new-lat)
+  (if
+   (null? lat)
+   new-lat
+    (my-reverse (cdr lat) (cons (car lat) new-lat))))
+
+(define (deep-reverse lat new-lat)
+  (cond
+    ((null? lat) new-lat)
+    ((list? (car lat))
+     (deep-reverse (cdr lat)
+                (cons (deep-reverse (car lat) null) new-lat)))
+    (else (deep-reverse (cdr lat) (cons (car lat) new-lat)))))
+
+(define x (list (list 1 2) (list 3 4)))
+
+(list x (my-reverse x null) (deep-reverse x null))
+#+end_src
+
+#+RESULTS:
+- ((1 2) (3 4))
+- ((3 4) (1 2))
+- ((4 3) (2 1))
+
+Org-Mode's Babel REPL seems to behave a bit differently that the
+Racket REPL that I have set up elsewhere. I had to change the
+name of ~reverse~ to ~my-reverse~ because ~reverse~ is a built-in
+procedure, so I was getting an "arity-mismatch" error when trying
+to call my own version of ~reverse~. It seems that the built-in
+version only takes one argument, whereas mine has the ~new-lat~
+argument. On the Racket REPL, I was able to set ~new-lat~ as a
+default argument, but this interpreter does not seem to like
+that. I will try to change my configuration to make Org-Mode's
+Babel use my locally-installed Racket implementation.

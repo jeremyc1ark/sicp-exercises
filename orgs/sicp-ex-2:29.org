@@ -1,0 +1,193 @@
+#+TITLE: Exercise 2.29
+*Exercise 2.29:* A binary mobile consists of two branches, a left
+branch and a right branch.  Each branch is a rod of a certain
+length, from which hangs either a weight or another binary mobile.
+We can represent a binary mobile using compound data by
+constructing it from two branches (for example, using `list'):
+
+    (define (make-mobile left right)
+    (list left right))
+
+A branch is constructed from a `length' (which must be a number)
+together with a `structure', which may be either a number
+(representing a simple weight) or another mobile:
+
+    (define (make-branch length structure)
+    (list length structure))
+
+* Part A
+Write the corresponding selectors `left-branch' and
+`right-branch', which return the branches of a mobile, and
+`branch-length' and `branch-structure', which return the
+components of a branch.
+
+#+header: :eval "no"
+#+begin_src scheme
+(define (left-branch mobile)
+  (car mobile))
+
+(define (right-branch mobile)
+  (cadr mobile))
+
+(define (branch-length branch)
+  (car branch))
+
+(define (branch-structure branch)
+  (cadr branch))
+#+end_src
+
+* Part B
+Using your selectors, define a procedure `total-weight' that
+returns the total weight of a mobile.
+
+When the problem says "total weight," I am assuming that the
+authors mean the the lengths of each branch multiplying their
+constituents, and the constituents multiplying their constituents
+and so on and so forth until leaf nodes are reached.
+
+#+header: :eval "no"
+#+begin_src scheme
+(define (total-weight mobile)
+    (define (helper branch acc)
+    (let ([structure (branch-structure branch)])
+        (if (integer? structure)
+            (* acc structure)
+            (let ([new-acc (* acc (branch-length structure))])
+            (+ (helper (right-branch structure) new-acc)
+               (helper (left-branch structure) new-acc))))))
+  (helper mobile))
+#+end_src
+
+* Part C
+A mobile is said to be "balanced" if the torque applied by
+its top-left branch is equal to that applied by its top-right
+branch (that is, if the length of the left rod multiplied by
+the weight hanging from that rod is equal to the
+corresponding product for the right side) and if each of the
+submobiles hanging off its branches is balanced. Design a
+predicate that tests whether a binary mobile is balanced.
+
+#+header: :eval "no"
+#+begin_src scheme
+(define (balanced? mobile)
+  (define (make-messenger result weight)
+      (list result weight))
+  (define (messenger-result messenger)
+      (car messenger))
+  (define (messenger-weight messenger)
+      (cadr messenger))
+  (define (helper branch)
+    (let ([structure (branch-structure branch)]
+          [len (branch-length branch)])
+      (if (integer? structure)
+          (make-messenger #t (* len structure))
+          (let* ([left-message (helper (left-branch branch))]
+                 [right-message (helper (right-branch branch))]
+                 [left-result (messenger-result left-message)]
+                 [left-weight (messenger-weight left-message)]
+                 [right-result (messenger-result right-message)]
+                 [right-weight (messenger-weight right-message)])
+            (make-messenger
+             (and (= right-weight left-weight) right-result left-result)
+             (* len (+ right-weight left-weight)))))))
+  (messenger-result (helper (make-branch 1 mobile))))
+#+end_src
+
+This was a very interesting procedure to write. If I were lazy, I
+could determined the weight of the two constituent branches using
+the ~total-weight~ procedure defined in Part B. However, doing so
+would result in redundant computation, which nobody likes.
+~total-weight~ traverses the entirety of its given mobile,
+calculating the weight of its mobile by calculating the weight of
+the constituent mobiles, which requires recursive calls. To
+determine whether a tree is balanced, we must also perform
+recursive calls on its subtrees. So, we could simply combine the
+responsibilites of ~total-weight~ and ~balanced?~ to work more
+efficiently in tandem. Let's explain in detail how this procedure
+works because I think it's pretty cool.
+
+~balanced?~ utilizes a helper function appropriately named
+~helper~, which is where most of the computation is done.
+~helper~ takes as an argument ~branch~.
+
+First, it tests whether the structure of the branch is an integer
+as a terminal case. If it is, then the branch is a leaf node. For
+a branch to be unbalanced, the weights of its submobile must be
+unequal. A leaf node has no submobiles, so it must be balanced.
+Now we must think about the information we would want if this
+branch was not a leaf node. First, we need to know the weights of
+the two submobiles. Then, we need to know whether those two
+submobiles were balanced. We can provide half of this information
+to enclosing recursive calls. The other half will be provided
+by the other branch. We communicate this information through a
+"message" data structure, which has constructor and selector
+procedures defined in the lexical scope of ~balanced?~. Our
+message contains whether the branch is balanced (~#t~) and the
+weight of the branch, which, in the case of the leaf node, is the
+product of the branch length and the simple weight.
+
+If the structure of the branch is another mobile, then we have to
+perform some recursive calls. We need information about both of
+the constituent branches, so we must call ~helper~ twice, once
+for each branch. The result of these calls will be the messages
+about each branch, which contain all of the information we need
+to generate a new message. The current branch will be balanced
+if...
+    - The weights of both branches are the same
+    - The left branch is balanced
+    - The right branch is balanced
+
+Additionally, the weight of this branch is the product of the
+length of this branch and the sum of the weights of the two
+sumbmobiles.
+
+We have a parent procedure surrounding ~helper~ because ~helper~
+will always return a "message" data structure. We only want the
+boolean, so we must use ~messenger-result~ to select the boolean
+from the value of our call to ~helper~. Additionally, ~helper~
+only takes branches, while ~balanced?~ is a procedure meant to
+take mobiles. So, we must construct a branch from the given
+mobile before passing it into ~helper~. This branch will have a
+length of 1.
+
+* Part D
+Suppose we change the representation of mobiles so that the
+constructors are
+
+    (define (make-mobile left right)
+        (cons left right))
+
+    (define (make-branch length structure)
+        (cons length structure))
+
+How much do you need to change your programs to convert to
+the new representation?
+
+This is a perfect exemplification of the power of abstraction
+barriers in the design of computer systems. ~total-weight~ and
+~balanced?~ only use the selectors defined in Part A to access
+data in the branch and mobile data structures. Now that the data
+structures have changed, we only need to change our selectors.
+The rest of our procedures remain untouched.
+
+For example, if we had used ~cadr~ instead of ~right-branch~ to
+select the right branch of a mobile, there would be two major
+disadvantages. First of all ~cadr~ is cryptic and hard to
+understand. ~right-branch~ on the other hand, tells us exactly
+what we are getting. In addition, the change to ~make-branch~ now
+requires us to change ~total-weight~ and ~balanced?~ (because
+~cadr~ only works on lists, not pairs). If we had used the
+~right-branch~ selector instead, we only would have needed to
+change ~right-branch~.
+
+Here are the changes we must make:
+
+#+begin_src scheme
+(define (right-branch mobile)
+  (cdr mobile))
+
+(define (branch-structure branch)
+  (cdr branch))
+#+end_src
+
+All I had to do was delete two letters.
