@@ -1,0 +1,28 @@
+#+TITLE: Exercise 2.31
+Abstract your answer to *Note Exercise 2-30:: to
+produce a procedure `tree-map' with the property that
+`square-tree' could be defined as
+
+    (define (square-tree tree) (tree-map square tree))
+
+#+begin_src scheme :results output
+(define (tree-map f tree)
+  (map (lambda (sub-tree)
+         (if (list? sub-tree)
+             (tree-map f sub-tree)
+             (f sub-tree)))
+       tree))
+
+(define (square-tree tree) (tree-map sqr tree))
+
+(display
+ (square-tree
+  (list 1
+        (list 2 (list 3 4) 5)
+        (list 6 7))))
+#+end_src
+
+#+RESULTS:
+: (1 (4 (9 16) 25) (36 49))
+
+The power of abstraction!
