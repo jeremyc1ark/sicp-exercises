@@ -1,0 +1,24 @@
+*Exercise 2.76:* As a large system with generic operations
+evolves, new types of data objects or new operations may be needed.
+For each of the three strategies--generic operations with explicit
+dispatch, data-directed style, and message-passing-style--describe
+the changes that must be made to a system in order to add new
+types or new operations.  Which organization would be most
+appropriate for a system in which new types must often be added?
+Which would be most appropriate for a system in which new
+operations must often be added?
+
+*Explicit dispatch*
+Explicit dispatch explicitly asks about the data type(s) of its argument(s) and performs the appropriate operations within the procedure based on the argument types. This is cumbersome because if you add a new data type to the system, you have to go through every procedure that operates on this data set, add a new conditional and write the appropriate operations for that database. When you add a new operation, you have to write sub-operations that are compatible with all of your types. If you have a lot of operations, a lot of types or you are constantly adding new types, this is probably not the best way to go.
+
+*Message Passing*
+Message passing switches things up by making data structures procedures and procedures data structures. Normally, you would pass a data structure into a procedure to perform an operation. With message passing, it's the opposite. Your data structures are procedures that take as parameters operation symbols. They identify the operation that needs to be done, and carry out this operation within the dispatch procedure. It's pretty cool! For a system where new data types are added often, message passing is probably the best design paradigm. All you need to do is write a new data structure like the one in the previous exercise, and then you don't need to worry about anything else. The operations specific to that data structure are defined internally, so you don't have to worry about conflicts. The new data structure can be immediately integrated into the new system so long as it has the neccesary operations internally defined.
+
+If you want to add a new operation, things get a bit more sticky. For all of your data types, you must add the appropriate operation. This can be inconvenient if your data type definitions are not in a centralized location.
+
+*Data Directed*
+Data directed style references a table of types and operations to get the appropriate procedure. To add a new type, you write an installation package with the operations specific to the data type defined internally in the package. Then, you add a new type to the dispatch table and add all of these operations under the type. A data directed style would be ideal if you were constantly adding new operations because you could write all the code you needed to do this in an isolated installation package. Just write an installation package with the data-type-specific operations internally defined, then use ~put~ to add these operations into the dispatch table for their respective data types.
+
+If you want to add a new type, you do something similar. Just write an installation package with all of the operations specific to that type internally defined. Then, add a new data type with these new operations using ~put~. This is pretty convenient! The only reason why I rated message passing as a better way to add new data types is because you don't even need to interact with another data object to get the data type up and running. Sure, you can define a single installation package to add a new type in a data directed program, but you still have to interact with an externally-defined data object (the dispatch table) to initialize your type. In message passing, there /is/ no table, which makes things a bit simpler.
+
+Overall, I would use a data directed approach in most situations because it works well for adding /both/ new operations and new types. Message passing works even better than data directed for adding new types, but it is cumbersome to add new operations. Explicit dispatch is terrible for adding both types and operations. Therefore, data directed is the way to go.

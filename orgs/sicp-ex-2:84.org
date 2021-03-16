@@ -1,0 +1,20 @@
+*Exercise 2.84:* Using the `raise' operation of *Note Exercise
+2-83::, modify the `apply-generic' procedure so that it coerces
+its arguments to have the same type by the method of successive
+raising, as discussed in this section.  You will need to devise a
+way to test which of two types is higher in the tower.  Do this in
+a manner that is "compatible" with the rest of the system and will
+not lead to problems in adding new levels to the tower.
+
+I have already implemented this method in the form of ~coerce-arg~ from Exercise 2.82.
+
+#+begin_src scheme :results silent
+(define (coerce-arg arg type)
+  (let ((current-type (type-tag arg)))
+    (if (equal? current-type type)
+        arg
+        (coerce-arg ((get-level-proc current-type) arg)
+                    type))))
+#+end_src
+
+See Exercise 2.82 for full implementation in ~apply-generic~.

@@ -1,0 +1,80 @@
+#+TITLE: Exercise 2.41
+Write a procedure to find all ordered triples of distinct
+positive integers i, j, and k less than or equal to a given
+integer n that sum to a given integer s.
+
+#+begin_src scheme :results list
+(define (fold-left op initial sequence)
+    (define (iter result remaining)
+            (if (null? remaining)
+                result
+                (iter (op result (car remaining))
+                    (cdr remaining))))
+    (iter initial sequence))
+
+(define (fold-right op initial sequence)
+   (if (null? sequence)
+       initial
+       (op (car sequence)
+           (fold-right op initial (cdr sequence)))))
+
+(define (enumerate-interval lo hi)
+  (if (> lo hi)
+      null
+      (cons lo (enumerate-interval (add1 lo) hi))))
+
+(define (flatmap proc seq)
+    (fold-right append null (map proc seq)))
+
+(define (unique-pairs n)
+  (flatmap
+   (lambda (i)
+     (map
+      (lambda (j) (list j i))
+      (enumerate-interval 1 (- i 1))))
+   (enumerate-interval 1 n)))
+
+(define (unique-lists hi len [acc null])
+  (if (= len 2)
+      (map
+       (lambda (x) (append x acc))
+       (unique-pairs (sub1 hi)))
+      (flatmap
+       (lambda (i)
+         (unique-lists i
+                       (sub1 len)
+                       (cons i acc)))
+       (enumerate-interval 1 (sub1 hi)))))
+
+(define (unique-triplets hi req-sum)
+  (define (sum-test lat)
+    (= req-sum (foldl + 0 lat)))
+  (filter sum-test (unique-lists hi 3)))
+
+(unique-triplets 20 15)
+#+end_src
+
+#+RESULTS:
+- (4 5 6)
+- (3 5 7)
+- (2 6 7)
+- (3 4 8)
+- (2 5 8)
+- (1 6 8)
+- (2 4 9)
+- (1 5 9)
+- (2 3 10)
+- (1 4 10)
+- (1 3 11)
+- (1 2 12)
+
+I thoroughly enjoyed this exercise. I could have written a
+procedure that would /only/ generate the triplets that I needed.
+But, after learning about the power of abstraction, I decided to
+generalize the procedure. I wrote ~unique-lists~, which takes as
+arguments the maximum number and the length of the list. So, to
+generate the triplets I needed, I would call ~(unique-triplets hi
+3)~, where ~hi~ is the number that all numbers in the triplets
+must be less than. Then, I would filter through this list,
+keeping only the triplets that summed to ~req-sum~ (~s~). The
+bulk of the work was in writing ~unique-lists~.

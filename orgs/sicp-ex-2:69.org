@@ -1,0 +1,81 @@
+*Exercise 2.69:* The following procedure takes as its argument a
+list of symbol-frequency pairs (where no symbol appears in more
+than one pair) and generates a Huffman encoding tree according to
+the Huffman algorithm.
+
+    (define (generate-huffman-tree pairs)
+    (successive-merge (make-leaf-set pairs)))
+
+`Make-leaf-set' is the procedure given above that transforms the
+list of pairs into an ordered set of leaves.  `Successive-merge'
+is the procedure you must write, using `make-code-tree' to
+successively merge the smallest-weight elements of the set until
+there is only one element left, which is the desired Huffman tree.
+(This procedure is slightly tricky, but not really complicated.
+If you find yourself designing a complex procedure, then you are
+almost certainly doing something wrong.  You can take significant
+advantage of the fact that we are using an ordered set
+representation.)
+
+#+begin_src scheme
+(define (symbols tree)
+  (if (leaf? tree)
+      (list (symbol-leaf tree))
+      (caddr tree)))
+
+(define (weight tree)
+  (if (leaf? tree)
+      (weight-leaf tree)
+      (cadddr tree)))
+
+(define (make-leaf symbol weight)
+  (list 'leaf symbol weight))
+
+(define (leaf? object)
+  (eq? (car object) 'leaf))
+
+(define (symbol-leaf x) (cadr x))
+
+(define (weight-leaf x) (caddr x))
+
+(define (make-code-tree left right)
+  (list left
+        right
+        (append (symbols left) (symbols right))
+        (+ (weight left) (weight right))))
+
+(define (make-leaf-set pairs)
+  (sort pairs
+        (lambda (x y) (< (weight x) (weight y)))))
+
+(define (adjoin-leaf leaf leaves (head null))
+  (cond ((null? leaves) (append head (list leaf)))
+        ((> (weight leaf) (weight (car leaves)))
+         (adjoin-leaf leaf (cdr leaves) (append head (list (car leaves)))))
+        (else (append head (list leaf) leaves))))
+
+(define (successive-merge leaves)
+  (if (null? (cdr leaves))
+      (car leaves)
+      (successive-merge
+       (adjoin-leaf (make-code-tree (car leaves)
+                                    (cadr leaves))
+                    (cddr leaves)))))
+
+(define (generate-huffman-tree pairs)
+  (successive-merge (make-leaf-set pairs)))
+
+(define my-pairs (list (make-leaf 'H 1)
+                       (make-leaf 'G 1)
+                       (make-leaf 'B 3)
+                       (make-leaf 'F 1)
+                       (make-leaf 'E 1)
+                       (make-leaf 'D 1)
+                       (make-leaf 'C 1)
+                       (make-leaf 'A 8)))
+
+(generate-huffman-tree my-pairs)
+#+end_src
+
+#+RESULTS:
+| (leaf A 8) | ((((leaf D 1) (leaf C 1) (D C) 2) ((leaf F 1) (leaf E 1) (F E) 2) (D C F E) 4) (((leaf H 1) (leaf G 1) (H G) 2) (leaf B 3) (H G B) 5) (D C F E H G B) 9) | (A D C F E H G B) | 17 |

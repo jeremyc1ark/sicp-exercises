@@ -1,0 +1,12 @@
+*Exercise 2.62:* Give a [theta](n) implementation of `union-set'
+for sets represented as ordered lists.
+
+#+begin_src scheme :results silent
+(define (union-set set1 set2 (head null))
+  (cond ((or (null? set1) (null? set2)) (append head set1 set2))
+        ((= (car set1) (car set2))
+         (union-set (cdr set1) (cdr set2) (append head (list (car set1)))))
+        ((> (car set1) (car set2))
+         (union-set set1 (cdr set2) (append head (list (car set2)))))
+        (else (union-set (cdr set1) set2 (append head (list (car set1)))))))
+#+end_src

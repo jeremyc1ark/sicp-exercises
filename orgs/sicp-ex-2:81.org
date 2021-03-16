@@ -1,0 +1,78 @@
+*Exercise 2.81:* Louis Reasoner has noticed that `apply-generic'
+may try to coerce the arguments to each other's type even if they
+already have the same type.  Therefore, he reasons, we need to put
+procedures in the coercion table to "coerce" arguments of each
+type to their own type.  For example, in addition to the
+`scheme-number->complex' coercion shown above, he would do:
+
+    (define (scheme-number->scheme-number n) n)
+        (define (complex->complex z) z)
+            (put-coercion 'scheme-number 'scheme-number
+                        scheme-number->scheme-number)
+            (put-coercion 'complex 'complex complex->complex)
+
+a. With Louis's coercion procedures installed, what happens if
+    `apply-generic' is called with two arguments of type
+    `scheme-number' or two arguments of type `complex' for an
+    operation that is not found in the table for those types?
+    For example, assume that we've defined a generic
+    exponentiation operation:
+
+        (define (exp x y) (apply-generic 'exp x y))
+
+    and have put a procedure for exponentiation in the
+    Scheme-number package but not in any other package:
+
+        ;; following added to Scheme-number package
+        (put 'exp '(scheme-number scheme-number)
+            (lambda (x y) (tag (expt x y)))) ; using primitive `expt'
+
+    What happens if we call `exp' with two complex numbers as
+    arguments?
+
+b. Is Louis correct that something had to be done about coercion
+    with arguments of the same type, or does `apply-generic' work
+    correctly as is?
+
+c. Modify `apply-generic' so that it doesn't try coercion if the
+    two arguments have the same type.
+
+*Part A*
+It seems that Reasoner does not live up to his name. If we called ~exp~ with two complex numbers as arguments, Reasoner's program would end up in an infinite recursive loop. Here's how it would play out:
+
+1. Reasoner's program would immediately call the newly defined version of ~apply-generic~ with ~'exp~ as the operation and c1 and c2 as the arguments, where c1 and c2 are the complex numbers.
+2. ~apply-generic~ would call ~(get 'exp '(complex complex))~ to try and find the appropriate procedure. This would return ~#f~ because ~'(complex complex)~ is not in the table. ~apply-generic~ would move on.
+3. ~apply-generic~ would call ~(get-coercion 'complex 'complex)~, which would access the coercion dispatch table and find Reasoner's procedure, ~scheme-number->scheme-number~.
+4. ~apply-generic~ would return ~(apply-generic 'exp (scheme-number->scheme-number c1) c2)~, which would simplify to ~(apply-generic 'exp c1 c2)~. This is identical to the original call to ~apply-generic~. This result in an infinite recursive loop.
+
+*Part B*
+Reasoner is wrong about this. There is no reason (no pun intended) to convert between the same type. This literally does nothing and causes complications, as we saw in Part A.
+
+*Part C*
+#+begin_src scheme :results silent
+(define (apply-generic op . args)
+  (let* ((type-tags (map type-tag args))
+         (proc (get op type-tags)))
+    (if proc
+        (apply proc (map contents args))
+        (if (= (length args) 2)
+            (let* ((type1 (car type-tags))
+                   (type2 (cadr type-tags))
+                   (a1 (car args))
+                   (a2 (cadr args))
+                   (t1->t2 (if (not (equal? type1 type2))
+                               (get-coercion type1 type2)
+                               #f))
+                   (t2->t1 (if (not (equal? type1 type2))
+                               (get-coercion type2 type1)
+                               #f)))
+                (cond (t1->t2
+                       (apply-generic op (t1->t2 a1) a2))
+                      (t2->t1
+                       (apply-generic op a1 (t2->t1 a2)))
+                      (else
+                       (error "no method for these types"
+                              (list op type-tags)))))
+            (error "no method for these types"
+                   (list op type-tags))))))
+#+end_src

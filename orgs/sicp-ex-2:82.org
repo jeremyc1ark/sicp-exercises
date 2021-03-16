@@ -1,0 +1,119 @@
+*Exercise 2.82:* Show how to generalize `apply-generic' to handle
+coercion in the general case of multiple arguments.  One strategy
+is to attempt to coerce all the arguments to the type of the first
+argument, then to the type of the second argument, and so on.
+Give an example of a situation where this strategy (and likewise
+the two-argument version given above) is not sufficiently general.
+(Hint: Consider the case where there are some suitable mixed-type
+operations present in the table that will not be tried.)
+
+#+begin_src scheme :results silent
+(define (apply-generic op . args)
+  (let* ((new-args (coerce-args args))
+         (type-tags (map type-tag new-args))
+         (type (car type-tags))
+         (proc (get op type)))
+    (if proc
+        (foldl proc (car new-args) (cdr new-args))
+        (error "Operation does not exist -- APPLY-GENERIC"))))
+
+(define (attach-tag type-tag contents)
+  (cond ((equal? type-tag 'real) (cons type-tag contents))
+        ((number? contents) contents)
+        (else (cons type-tag contents))))
+
+(define (type-tag datum)
+  (cond ((pair? datum) (car datum))
+        ((number? datum) 'integer)
+        (else (error "Bad tagged datum -- TYPE-TAG" datum))))
+
+(define (contents datum)
+  (cond ((number? datum) datum)
+        ((pair? datum) (cdr datum))
+        (else (error "Bad tagged datum -- CONTENTS" datum))))
+
+;; Takes list of pairs where car is type and cdr is procedure to
+;; convert to higher type. List should be in order of the hierachy
+;; with lowest types first. Procedure for type at top should be null
+(define (make-hierarchy l)
+  (define (construct-level-template types procs counter)
+    (cons (car types) (make-hash (list (cons 'proc (car procs))
+                                       (cons 'precedence counter)))))
+  (let ((types (map car l))
+        (procs (map cdr l)))
+    (define (iter types procs (counter 0) (hierarchy null))
+      (if (or (null? types) (null? procs))
+          (make-hash hierarchy)
+          (iter (cdr types)
+                (cdr procs)
+                (add1 counter)
+                (cons (construct-level-template types procs counter) hierarchy))))
+    (iter types procs)))
+
+(define (get-hierarchy-info type key hierarchy)
+  (dict-ref (dict-ref hierarchy
+                      type
+                      (make-hash null))
+            key
+            0))
+
+(define (get-level-precedence type)
+  (get-hierarchy-info type 'precedence number-hierarchy))
+
+(define (get-level-proc type)
+  (get-hierarchy-info type 'proc number-hierarchy))
+
+(define (get-highest-precedence args)
+  (define (compare x y)
+    (let ((precedence-x (get-level-precedence x))
+          (precedence-y (get-level-precedence y)))
+      (if (> precedence-x precedence-y)
+          x
+          y)))
+  (let ((types (map type-tag args)))
+    (foldl compare null types)))
+
+(define (coerce-arg arg type)
+  (let ((current-type (type-tag arg)))
+    (if (equal? current-type type)
+        arg
+        (coerce-arg ((get-level-proc current-type) arg)
+                    type))))
+
+(define (coerce-args args)
+  (let ((top (get-highest-precedence args)))
+    (map (lambda (x) (coerce-arg x top)) args)))
+
+(define (number-package)
+  (define (numer x)
+    (car x))
+
+  (define (denom x)
+    (cdr x))
+
+  (define (ordinary->rational x)
+    (attach-tag 'rational (cons (contents x) 1)))
+
+  (define (rational->real x)
+    (attach-tag 'real (/ (numer (contents x)) (denom (contents x)))))
+
+  (define (real->complex x)
+    (attach-tag 'complex (cons (contents x) 0)))
+
+  (make-hierarchy (list (cons 'integer ordinary->rational)
+                        (cons 'rational rational->real)
+                        (cons 'real real->complex)
+                        (cons 'complex null))))
+
+(define number-hierarchy (number-package))
+#+end_src
+
+I had a lot of fun writing this. It really solidified the concept of hierarchies for me. I'll walk through my thought process.
+
+First, let's talk about the hierarchy structure. The hierarchy is a dictionary where the keys are symbols representing the data types and the values are dictionaries, which have specific information on the type, including its precedence in the hierarchy and the procedure that converts the data type on the current level up to the data type on the next level. "What about procedures that convert downwards?," you might ask. The problem is, converting downwards does not always work. For example, if you have a complex number where the imaginary part is non-zero, you cannot convert to a lower data type. This is as low as you are allowed to go. It is better to work up. All numeric data types can be represented as a complex number, but not all complex numbers can be represented as the data types on levels below it in the hierarchy. If I were actually going to use this in an application, I may include procedures to convert downwards, but they would only be used for simplifying the result of an operation. For our purposes, this is not nessecary.
+
+If you have defined procedures for intra-data-type operations and defined a coercion procedure for each level of the hierarchy that converts to the next level, you are pretty much set. If you want to combine a list of different data types with an operator, you need to coerce all the arguments to the highest level of the hierarchy in your list of arguments, and then successively combine those arguments using the intra-data-type operator. My program does this.
+
+Technically, I did not write the procedure that this exercise requested. Why not? Becuause it would not work in some cases. Who wants to write a program that doesn't work? Not me. The exercise said to write a version of ~apply-generic~ that brings all the arguments to the level of the first argument. If the level of the first argument is the highest level out of all the arguments, then ~apply-generic~ works just fine. But what if our arguments consisted of an ordinary number, a rational number (where the terms cannot be reduced further) and a complex number (with a non-zero imaginary part), in that order. We would be asking ~apply-generic~ to convert a complex number like /5 + 9i/ and a rational number like /7 / 3/ to a regular integer. This is impossible. ~apply-generic~ would have to throw an error.
+
+My system is superior; you can always convert up the hierarchy, but you cannot always convert down.

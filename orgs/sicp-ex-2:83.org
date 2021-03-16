@@ -1,0 +1,16 @@
+*Exercise 2.83:* Suppose you are designing a generic arithmetic
+system for dealing with the tower of types shown in *Note Figure
+2-25::: integer, rational, real, complex.  For each type (except
+complex), design a procedure that raises objects of that type one
+level in the tower.  Show how to install a generic `raise'
+operation that will work for each type (except complex).
+
+#+begin_src scheme :results silent
+(define (raise x)
+  (let ((proc (get-level-proc (type-tag x))))
+    (if proc
+        (proc x)
+        x)))
+#+end_src
+
+This uses the infrastructure defined in Exercise 2.82. It uses the hierarchy structure.

@@ -1,0 +1,150 @@
+*Exercise 2.70:* The following eight-symbol alphabet with
+associated relative frequencies was designed to efficiently encode
+the lyrics of 1950s rock songs.  (Note that the "symbols" of an
+"alphabet" need not be individual letters.)
+
+    A     2 NA   16
+    BOOM  1 SHA  3
+    GET   2 YIP  9
+    JOB   2 WAH  1
+
+Use `generate-huffman-tree' (*Note Exercise 2-69::) to generate a
+corresponding Huffman tree, and use `encode' (*Note Exercise
+2-68::) to encode the following message:
+
+    Get a job
+
+    Sha na na na na na na na na
+
+    Get a job
+
+    Sha na na na na na na na na
+
+    Wah yip yip yip yip yip yip yip yip yip
+
+    Sha boom
+
+How many bits are required for the encoding?  What is the smallest
+number of bits that would be needed to encode this song if we used
+a fixed-length code for the eight-symbol alphabet?
+
+#+begin_src scheme :results output
+(define (left-branch tree) (car tree))
+
+(define (right-branch tree) (cadr tree))
+
+(define (symbols tree)
+  (if (leaf? tree)
+      (list (symbol-leaf tree))
+      (caddr tree)))
+
+(define (weight tree)
+  (if (leaf? tree)
+      (weight-leaf tree)
+      (cadddr tree)))
+
+(define (make-leaf symbol weight)
+  (list 'leaf symbol weight))
+
+(define (leaf? object)
+  (eq? (car object) 'leaf))
+
+(define (symbol-leaf x) (cadr x))
+
+(define (weight-leaf x) (caddr x))
+
+(define (decode bits tree)
+  (define (decode-1 bits current-branch)
+    (if (null? bits)
+        '()
+        (let ((next-branch
+               (choose-branch (car bits) current-branch)))
+          (if (leaf? next-branch)
+              (cons (symbol-leaf next-branch)
+                    (decode-1 (cdr bits) tree))
+              (decode-1 (cdr bits) next-branch)))))
+  (decode-1 bits tree))
+
+(define (choose-branch bit branch)
+  (cond ((= bit 0) (left-branch branch))
+        ((= bit 1) (right-branch branch))
+        (else (error "bad bit -- CHOOSE-BRANCH" bit))))
+
+(define (make-code-tree left right)
+  (list left
+        right
+        (append (symbols left) (symbols right))
+        (+ (weight left) (weight right))))
+
+(define (is-member? x l)
+  (cond ((null? l) #f)
+        ((equal? (car l) x) #t)
+        (else (is-member? x (cdr l)))))
+
+(define (encode-symbol symbol tree (bit-list null))
+  (cond ((leaf? tree) bit-list)
+        ((is-member? symbol (symbols (right-branch tree)))
+         (encode-symbol symbol (right-branch tree) (append bit-list (list 1))))
+        ((is-member? symbol (symbols (left-branch tree)))
+         (encode-symbol symbol (left-branch tree) (append bit-list (list 0))))
+        (else (error "Unknown symbol"))))
+
+(define (encode message tree)
+  (if (null? message)
+      null
+      (append (encode-symbol (car message) tree)
+              (encode (cdr message) tree))))
+
+(define (make-leaf-set pairs)
+  (sort pairs
+        (lambda (x y) (< (weight x) (weight y)))))
+
+(define (adjoin-leaf leaf leaves (head null))
+  (cond ((null? leaves) (append head (list leaf)))
+        ((> (weight leaf) (weight (car leaves)))
+         (adjoin-leaf leaf (cdr leaves) (append head (list (car leaves)))))
+        (else (append head (list leaf) leaves))))
+
+(define (successive-merge leaves)
+  (if (null? (cdr leaves))
+      (car leaves)
+      (successive-merge
+       (adjoin-leaf (make-code-tree (car leaves)
+                                    (cadr leaves))
+                    (cddr leaves)))))
+
+(define (generate-huffman-tree pairs)
+  (successive-merge (make-leaf-set pairs)))
+
+(define sounds (list (make-leaf 'A 2)
+                     (make-leaf 'BOOM 1)
+                     (make-leaf 'GET 2)
+                     (make-leaf 'JOB 2)
+                     (make-leaf 'NA 16)
+                     (make-leaf 'SHA 3)
+                     (make-leaf 'YIP 9)
+                     (make-leaf 'WAH 1)))
+
+(define lyrics
+  (list 'GET 'A 'JOB
+        'SHA 'NA 'NA 'NA 'NA 'NA 'NA 'NA 'NA
+        'GET 'A 'JOB
+        'SHA 'NA 'NA 'NA 'NA 'NA 'NA 'NA 'NA
+        'WAH 'YIP 'YIP 'YIP 'YIP 'YIP 'YIP 'YIP 'YIP 'YIP
+        'SHA 'BOOM))
+
+(display (~a "To encode this message, you would need "
+             (length (encode lyrics (generate-huffman-tree sounds)))
+             " bits.\n\n"))
+#+end_src
+
+#+RESULTS:
+: To encode this message, you would need 84 bits.
+
+If you were using fixed-length encoding, you would need more bits. There are 8 sounds, which means that you would need 3 bits to represent each sound.
+
+2 ^ 1 + 2 ^ 2 < 8
+
+2 ^ 1 + 2 ^ 2 + 2 ^ 3 > 6, therefore we need 3 bits.
+
+There are 36 bytes in ~lyrics~. Therefore, if we were using fixed-length encoding, we would need 3 * 36 = 108 bits.

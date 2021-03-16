@@ -1,0 +1,18 @@
+*Exercise 2.72:* Consider the encoding procedure that you designed
+in *Note Exercise 2-68::.  What is the order of growth in the
+number of steps needed to encode a symbol?  Be sure to include the
+number of steps needed to search the symbol list at each node
+encountered.  To answer this question in general is difficult.
+Consider the special case where the relative frequencies of the n
+symbols are as described in *Note Exercise 2-71::, and give the
+order of growth (as a function of n) of the number of steps needed
+to encode the most frequent and least frequent symbols in the
+alphabet.
+
+The left branch of a Huffman tree, at least one constructed using a list of leaves constructed with ~obscure-formula~ in the previous exercise, will always contain the leaf with the highest weight. Therefore, we know that for the most frequent symbol, ~encode-symbol~ will only need to be called once. ~encode-symbol~ first asks whether the tree is a leaf, which takes O(1) time since all leaves have a 'leaf marker as their first element. Then, ~encode-symbol~ asks whether the symbol is a member of the symbols the right branch of the tree. It will not be a member, meaning that ~encode-symbol~ will have to look through the whole list before it can find an answer. This takes time proportional to O(n). Then, ~encode-symbol~ asks whether the symbol is a member of the left branch, which it is. The symbol also happens to be the only symbol in the left branch's list of symbols, so this takes O(1). Overall, the process will take time proportional to O(n). This could be mitigated, however, if we placed the conditional for the left branch before the right branch. This is something that I overlooked when originally writing the procedure, but now I see the benefit this could have.
+
+The least frequent symbol will be at the bottom of the tree, meaning that it will take significantly longer to get to. When using a list of leaves constructed with the formula from the previous exercise, the number of bits needed to construct the least frequent symbol will be proportional to /n/. This means that we will need to call ~encode-symbol~ a number of times proportional to /n/. For all but one of the calls, ~encode-symbol~ will search the symbol lists, unsuccessfully, of the left and right branches, for the least frequent symbol. When ~encode-symbol~ is first called, it must search through a total of /n/ symbols. After each recursive call, the number of symbols ~encode-symbol~ must search through decreases by 1. This could be expressed by the formula /s = n - l/, where /s/ is the number of symbols ~encode-symbol~ must search and /l/ is the level of recursion. /l/ is proportional to /n/, so the overall number of symbols that ~encode-symbol~ will have to search, both directly and indirectly through its recursive calls, is:
+
+/s = sum(l=1, n)(n - l)/
+
+The highest degree term in this function is n ^ 2, so we can conclude that the order of growth is O(n ^ 2).

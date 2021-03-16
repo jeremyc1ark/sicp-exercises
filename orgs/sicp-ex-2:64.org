@@ -1,0 +1,99 @@
+*Exercise 2.64:* The following procedure `list->tree' converts an
+ordered list to a balanced binary tree.  The helper procedure
+`partial-tree' takes as arguments an integer n and list of at
+least n elements and constructs a balanced tree containing the
+first n elements of the list.  The result returned by
+`partial-tree' is a pair (formed with `cons') whose `car' is the
+constructed tree and whose `cdr' is the list of elements not
+included in the tree.
+
+(define (list->tree elements)
+  (car (partial-tree elements (length elements))))
+
+(define (partial-tree elts n)
+  (if (= n 0)
+      (cons '() elts)
+      (let ((left-size (quotient (- n 1) 2)))
+        (let ((left-result (partial-tree elts left-size)))
+          (let ((left-tree (car left-result))
+                (non-left-elts (cdr left-result))
+                (right-size (- n (+ left-size 1))))
+            (let ((this-entry (car non-left-elts))
+                  (right-result (partial-tree (cdr non-left-elts)
+                                              right-size)))
+              (let ((right-tree (car right-result))
+                    (remaining-elts (cdr right-result)))
+                (cons (make-tree this-entry left-tree right-tree)
+                      remaining-elts))))))))
+
+a. Write a short paragraph explaining as clearly as you can how
+    `partial-tree' works.  Draw the tree produced by `list->tree'
+    for the list `(1 3 5 7 9 11)'.
+
+b. What is the order of growth in the number of steps required by
+    `list->tree' to convert a list of n elements?
+
+*Part A*
+In essence, ~partial-tree~ works by finding the middle value of the list, the list of all the values after the middle value and the list of all the values before the middle value. Then, it recursively calls ~partial-tree~ on the two lists to produce two sub-trees. Finally, it combines the middle value, the left sub-tree and the right sub-tree to form the final tree. In reality there are a lot more to this process, but this is the main idea of the procedure. And honestly, I think I could write a more concise version of this same procedure. Let me give it a try.
+
+#+name: tree-constructor
+#+begin_src scheme
+(define (make-tree entry left right)
+  (list entry left right))
+#+end_src
+
+#+begin_src scheme :noweb yes :results output
+<<tree-constructor>>
+
+(define (list->tree elements)
+  (car (partial-tree elements (length elements))))
+
+(define (partial-tree elts n)
+  (if (= n 0)
+      (cons '() elts)
+      (let* ((left-size (quotient (sub1 n) 2))
+             (left-result (partial-tree elts left-size))
+             (left-tree (car left-result))
+             (non-left-elts (cdr left-result))
+             (right-size (- n (add1 left-size)))
+             (this-entry (car non-left-elts))
+             (right-result (partial-tree (cdr non-left-elts)
+                                         right-size))
+             (right-tree (car right-result))
+             (remaining-elts (cdr right-result)))
+        (cons (make-tree this-entry left-tree right-tree) remaining-elts))))
+
+(display (list->tree (list 1 2 3 4 5 6 7 8 9 10)))
+#+end_src
+
+#+RESULTS:
+: (5 (2 (1 () ()) (3 () (4 () ()))) (8 (6 () (7 () ())) (9 () (10 () ()))))
+
+This is the output from the original procedure. I made it a bit cleaner using ~let*~, but it is exactly the same. Now, let's compare this to my procedure.
+
+#+begin_src scheme :noweb yes :results output
+<<tree-constructor>>
+
+(define (list->tree l)
+  (cond ((null? l) null)
+        ((= (length l) 1) (make-tree (car l) null null))
+        (else (let* ((split-pos (quotient (length l) 2))
+                     (entry (list-ref l split-pos))
+                     (left-list (take l split-pos))
+                     (right-list (drop l (add1 split-pos)))
+                     (left-tree (list->tree left-list))
+                     (right-tree (list->tree right-list)))
+                (make-tree entry left-tree right-tree)))))
+
+(display (list->tree (list 1 2 3 4 5 6 7 8 9 10)))
+#+end_src
+
+#+RESULTS:
+: (6 (3 (2 (1 () ()) ()) (5 (4 () ()) ())) (9 (8 (7 () ()) ()) (10 () ())))
+
+Ok, so now I am looking at the results and it looks like we got close, but just missed the mark. I have tried to diagnose the problem but so far, no luck. Maybe there is a reason why the original procedure is more complicated.
+
+*Part B*
+In ~partial-tree~, the order of growth is O(n). For each node on the tree, ~partial-tree~ performs two recursive calls. The time it takes for these recursive calls to execute is proportional to ~n~, which is proportional to the length of the original list. So, if ~partial-tree~ gets a list of length 10, it will do two recursive calls, (one for the right side and the other for the left side) where ~n~ ≅ 10 / 2. ~partial-tree~ terminates when ~n~ = 0, so the number of layers will be proportional to log(n). However, for each layer that is added, the number of calls on that layer is double the previous number. This could be written as 2 ^ log(n), which is proportional to ~n~. Finally, we need to consider whether the work done during each step of recursion will change the big-O notation. A step of recursion involves determining ~left-size~, ~left-tree~, ~non-left-elts~, ~right-size~, ~this-entry~, ~right-tree~, and ~remaining-elts~, all of which have time complexities of O(1). Finally, the procedure constructs a tree from ~this-entry~, ~left-tree~ and ~right-tree~, and then ~cons~\es this into ~remaining-elts~. This also has a time complexity of O(1). The highest degree term we have encountered so far is ~n~, so the time complexity is O(n).
+
+My procedure also has a time complexity of O(n). It takes list ~l~, splits it in half, recursively calls itself on both of those halves, and finally combines them into a tree. The number of levels is proportional log(n) and the number of calls doubles every level, so the number of calls is proportional to 2 ^ log(n). Finally, the work done in each call is proportional to O(1). 2 ^ log(n) is proportional to ~n~, which is the highest degree term we have encountered, so the time complexity is O(n).

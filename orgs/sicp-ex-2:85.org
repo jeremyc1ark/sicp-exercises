@@ -1,0 +1,85 @@
+*Exercise 2.85:* This section mentioned a method for "simplifying"
+a data object by lowering it in the tower of types as far as
+possible.  Design a procedure `drop' that accomplishes this for the
+tower described in *Note Exercise 2-83::.  The key is to decide,
+in some general way, whether an object can be lowered.  For
+example, the complex number 1.5 + 0i can be lowered as far as
+`real', the complex number 1 + 0i can be lowered as far as
+`integer', and the complex number 2 + 3i cannot be lowered at all.
+Here is a plan for determining whether an object can be lowered:
+Begin by defining a generic operation `project' that "pushes" an
+object down in the tower.  For example, projecting a complex
+number would involve throwing away the imaginary part.  Then a
+number can be dropped if, when we `project' it and `raise' the
+result back to the type we started with, we end up with something
+equal to what we started with.  Show how to implement this idea in
+detail, by writing a `drop' procedure that drops an object as far
+as possible.  You will need to design the various projection
+operations(5) and install `project' as a generic operation in the
+system.  You will also need to make use of a generic equality
+predicate, such as described in *Note Exercise 2-79::.  Finally,
+use `drop' to rewrite `apply-generic' from *Note Exercise 2-84::
+so that it "simplifies" its answers.
+
+#+begin_src scheme :results silent
+(define (make-hierarchy l)
+  (define (construct-level-template types up-procs down-procs counter)
+    (cons (car types) (make-hash (list (cons 'up (car up-procs))
+                                       (cons 'down (car down-procs))
+                                       (cons 'precedence counter)))))
+  (let ((types (map car l))
+        (up (map cadr l))
+        (down (map caddr l)))
+    (define (iter types up-procs down-procs (counter 0) (hierarchy null))
+      (if (or (null? types) (null? up-procs))
+          (make-hash hierarchy)
+          (iter (cdr types)
+                (cdr up-procs)
+                (cdr down-procs)
+                (add1 counter)
+                (cons (construct-level-template types procs counter) hierarchy))))
+    (iter types up down)))
+
+(define (get-level-down-proc type)
+  (get-hierarchy-info type 'down number-hierarchy))
+
+(define (drop1 x)
+  (let ((type (type-tag x))
+        (down-proc (get-level-down-proc type)))
+    (if down-proc
+        (down-proc x)
+        'no)))
+
+(define (drop x)
+  (let ((next (drop1 x)))
+    (if (not (equal? 'no next))
+        (drop next)
+        x)))
+
+(define (apply-generic op . args)
+  (let* ((new-args (coerce-args args))
+         (type-tags (map type-tag new-args))
+         (type (car type-tags))
+         (proc (get op type)))
+    (if proc
+        (drop (foldl proc (car new-args) (cdr new-args)))
+        (error "Operation does not exist -- APPLY-GENERIC"))))
+
+;; Down-procs that would be added to the hierarchy
+(define (complex->real x)
+  (if (imag-part x)
+      'no
+      (attach-tag 'real (real-part x))))
+
+(define (real->rational x)
+  (if (integer? real)
+      (attach-tag 'rational (cons (contents x) 1))
+      'no))
+
+(define (rational->integer x)
+  (if (equ? (denom x) 1)
+      (numer x)
+      'no))
+#+end_src
+
+I honestly don't understand what they want me to use ~project~ for. I am just going to modify the system I have already implemented. I just need to add new key-value pairs to the values of the hierarchy, which will represent the procedures for converting one level up and for converting one level down. Then, ~drop~ can access these procedures when it wants to lower a data type. I also wrote the procedures that would be added to the hierarchy. If the value cannot be converted to the lower level, it returns ~'no~. I implemented a procedure ~drop1~, which drops the given type one level down. If the conversion procedure returns ~'no~ or it cannot find a conversion procedure, it returns ~'no~ as well. ~drop~ tries to lower its argument until it comes across ~'no~, in which case it returns the current argument. I chose ~'no~ instead of ~#f~ because ~0~ can be interpreted as ~#f~, which we would not want. So we drop until we cannot drop any longer, and then we return the value. This is easy to incorporate into apply-generic. If it raises its arguments up to a high term and combines them, we can simply use drop to simplify the result to the lowest possible level in the hierarchy.

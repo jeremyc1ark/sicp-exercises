@@ -1,0 +1,229 @@
+*Exercise 2.86:* Suppose we want to handle complex numbers whose
+real parts, imaginary parts, magnitudes, and angles can be either
+ordinary numbers, rational numbers, or other numbers we might wish
+to add to the system.  Describe and implement the changes to the
+system needed to accommodate this.  You will have to define
+operations such as `sine' and `cosine' that are generic over
+ordinary numbers and rational numbers.
+
+#+begin_src scheme :results silent
+(define (apply-generic op . args)
+  (let* ((new-args (equalize-args args))
+         (type (type-tag (car args)))
+         (proc (get op type)))
+    (cond ((and (= (length args) 1) proc) (proc (car args)))
+          (proc (drop (foldl proc (car new-args) (cdr new-args))))
+        (error "Operation does not exist -- APPLY-GENERIC"))))
+
+(define (attach-tag type-tag contents)
+  (cond ((equal? type-tag 'real) (cons type-tag contents))
+        ((number? contents) contents)
+        (else (cons type-tag contents))))
+
+(define (type-tag datum)
+  (cond ((pair? datum) (car datum))
+        ((number? datum) 'integer)
+        (else (error "Bad tagged datum -- TYPE-TAG" datum))))
+
+(define (contents datum)
+  (cond ((number? datum) datum)
+        ((pair? datum) (cdr datum))
+        (else (error "Bad tagged datum -- CONTENTS" datum))))
+
+(define (transistion-package)
+  ;; Going up
+  (define (integer->rational x)
+    (attach-tag 'rational (cons (contents x) 1)))
+
+  (define (rational->real x)
+    (attach-tag 'real (/ (numer (contents x)) (denom (contents x)))))
+
+  (define (real->complex x)
+    (attach-tag 'complex (cons (contents x) 0)))
+
+  ;; Going down
+  (define (complex->real x)
+    (if (not (equ? (imag-part x) 0))
+        #f
+        (attach-tag 'real (real-part x))))
+
+  (define (real->rational x)
+    (if (equal? (type-tag x) 'integer)
+        (attach-tag 'rational (cons (contents x) 1))
+        #f))
+
+  (define (rational->integer x)
+    (if (equ? (denom x) 1)
+        (numer x)
+        #f))
+
+  ;; Installation
+  (put 'raise1 'integer integer->rational)
+  (put 'raise1 'rational rational->real)
+  (put 'raise1 'real real->complex)
+
+  (put 'drop1 'complex complex->real)
+  (put 'drop1 'real real->rational)
+  (put 'drop1 'rational rational->integer))
+
+(integer->rational)
+
+(define hierarchy (list 'integer 'rational 'real 'complex))
+
+(define (install-hierarchy hierarchy (counter 0))
+  (define (recur)
+    (put 'level (car hierarchy) (lambda (x) counter))
+    (install-hierarchy (cdr hierarchy) (add1 counter)))
+  (if (null? hierarchy)
+      'done
+      (recur)))
+
+(install-hierarchy hierarchy)
+
+(define (level data)
+  (apply-generic 'level data))
+
+(define (raise x type)
+  (let ((raise-proc (get 'raise1 (type-tag x) #f)))
+    (cond ((equal? (type-tag x) type) x)
+          (raise-proc (raise (raise-proc x) type))
+          (else (error "Unable to raise" x "to" type "--RAISE")))))
+
+(define (drop1 x)
+  (apply-generic 'drop1 x))
+
+(define (drop x)
+  (let* ((drop-proc (get 'drop1 (type-tag x) #f))
+         (new-x (if drop-proc (drop-proc x) #f)))
+    (if new-x (drop new-x) x)))
+
+(define (get-highest-precednce args)
+  (define (test x y)
+    (if (> (level x) (level y)) x y))
+  (type-tag (foldl test (list (car hierarchy) 0) args)))
+
+(define (equalize-args args)
+  (let ((type (get-highest-precedence args)))
+    (define (equalizer x)
+      (raise x type))
+    (map equalizer args)))
+
+(define (install-complex-package)
+  ;; imported procedures from rectangular and polar packages
+  (define (make-from-real-imag x y)
+    ((get 'make-from-real-imag 'rectangular) x y))
+  (define (make-from-mag-ang r a)
+    ((get 'make-from-mag-ang 'polar) r a))
+
+  ;; internal procedures
+  (define (add-complex z1 z2)
+    (make-from-real-imag (add (real-part z1) (real-part z2))
+                         (add (imag-part z1) (imag-part z2))))
+  (define (sub-complex z1 z2)
+    (make-from-real-imag (sub (real-part z1) (real-part z2))
+                         (sub (imag-part z1) (imag-part z2))))
+  (define (mul-complex z1 z2)
+    (make-from-mag-ang (mul (magnitude z1) (magnitude z2))
+                       (add (angle z1) (angle z2))))
+  (define (div-complex z1 z2)
+    (make-from-mag-ang (div (magnitude z1) (magnitude z2))
+                       (sub (angle z1) (angle z2))))
+
+  ;; interface to rest of the system
+  (define (tag z) (attach-tag 'complex z))
+  (put 'add '(complex complex)
+       (lambda (z1 z2) (tag (add-complex z1 z2))))
+  (put 'sub '(complex complex)
+       (lambda (z1 z2) (tag (sub-complex z1 z2))))
+  (put 'mul '(complex complex)
+       (lambda (z1 z2) (tag (mul-complex z1 z2))))
+  (put 'div '(complex complex)
+       (lambda (z1 z2) (tag (div-complex z1 z2))))
+  (put 'make-from-real-imag 'complex
+       (lambda (x y) (tag (make-from-real-imag x y))))
+  (put 'make-from-mag-ang 'complex
+       (lambda (r a) (tag (make-from-mag-ang r a))))
+  'done)
+
+(define (install-trig-package)
+  (define (cos-integer x)
+    (attach-tag 'real (cos (contents x))))
+
+  (define (sin-integer x)
+    (attach-tag 'real (sin (contents x))))
+
+  (define (sin-rational x)
+    (let ((x (contents x)))
+      (attach-tag 'real (sin (div (numer x) (denom x))))))
+
+  (define (cos-rational x)
+    (let ((x (contents x)))
+      (attach-tag 'real (cos (div (numer x) (denom x))))))
+
+  ;; Installation
+  (put 'sin 'integer sin-integer)
+  (put 'sin 'rational sin-rational)
+  (put 'cos 'integer cos-integer)
+  (put 'cos 'rational cos-rational))
+
+(install-trig-package)
+
+(define (square x)
+  (mul x x))
+
+(define (install-rectangular-package)
+  ;; internal procedures
+  (define (real-part z) (car z))
+  (define (imag-part z) (cdr z))
+  (define (make-from-real-imag x y) (cons x y))
+  (define (magnitude z)
+    (sqrt (add (square (real-part z))
+             (square (imag-part z)))))
+  (define (angle z)
+    (atan (imag-part z) (real-part z)))
+  (define (make-from-mag-ang r a)
+    (cons (mul r (cos a)) (mul r (sin a))))
+
+  ;; interface to the rest of the system
+  (define (tag x) (attach-tag 'rectangular x))
+  (put 'real-part '(rectangular) real-part)
+  (put 'imag-part '(rectangular) imag-part)
+  (put 'magnitude '(rectangular) magnitude)
+  (put 'angle '(rectangular) angle)
+  (put 'make-from-real-imag 'rectangular
+       (lambda (x y) (tag (make-from-real-imag x y))))
+  (put 'make-from-mag-ang 'rectangular
+       (lambda (r a) (tag (make-from-mag-ang r a))))
+  'done)
+
+(define (install-polar-package)
+  ;; internal procedures
+  (define (magnitude z) (car z))
+  (define (angle z) (cdr z))
+  (define (make-from-mag-ang r a) (cons r a))
+  (define (real-part z)
+    (mul (magnitude z) (cos (angle z))))
+  (define (imag-part z)
+    (mul (magnitude z) (sin (angle z))))
+  (define (make-from-real-imag x y)
+    (cons (sqrt (add (square x) (square y)))
+          (atan y x)))
+
+  ;; interface to the rest of the system
+  (define (tag x) (attach-tag 'polar x))
+  (put 'real-part '(polar) real-part)
+  (put 'imag-part '(polar) imag-part)
+  (put 'magnitude '(polar) magnitude)
+  (put 'angle '(polar) angle)
+  (put 'make-from-real-imag 'polar
+       (lambda (x y) (tag (make-from-real-imag x y))))
+  (put 'make-from-mag-ang 'polar
+       (lambda (r a) (tag (make-from-mag-ang r a))))
+  'done)
+#+end_src
+
+I have modified the system by removing the old hierarchy infrastructure that I implemented in earlier exercises and instead integrating it directly into the dispatch table. This removes some of the complications and makes the system more consistent. It also seems to be closer to what the authors want me to implement.
+
+I also modified ~apply-generic~ once again to handle procedures that take just one argument.
+
+The main point of a system like this is to make it recursively generic. The MIT lectures on this book talk about how you can use the generic operators from the top layer of abstraction in lower layers of abstraction. This is exactly what we need to change if we want the modules of our system to be able to handle data types from other modules when doing operations. We can think of the generic operator as a delegator. Its job is not to operate directly on data types, but rather to delegate the operation to the appropriate procedure. When we replace numeric operators like ~*~ with their generic counterparts like ~mul~, we allow lower level modules to collaborate with other lower level modules using the higher level, generic procedures. It's a pretty cool concept and it all fits together very nicely.

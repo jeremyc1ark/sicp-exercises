@@ -1,0 +1,14 @@
+*Exercise 2.66:* Implement the `lookup' procedure for the case
+where the set of records is structured as a binary tree, ordered
+by the numerical values of the keys.
+
+#+begin_src scheme :results silent
+(define (lookup given-key set-of-records)
+  (if (null? set-of-records)
+      #f
+      (let ((head-key (key (entry set-of-records))))
+        (cond ((= given-key head-key) (value given-key))
+              ((> given-key (key (entry set-of-records)))
+               (lookup given-key (left-branch set-of-records)))
+              (else (lookup given-key (right-branch set-of-records)))))))
+#+end_src

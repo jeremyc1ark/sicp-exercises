@@ -1,0 +1,190 @@
+*Exercise 2.58:* Suppose we want to modify the differentiation
+program so that it works with ordinary mathematical notation, in
+which `+' and `*' are infix rather than prefix operators.  Since
+the differentiation program is defined in terms of abstract data,
+we can modify it to work with different representations of
+expressions solely by changing the predicates, selectors, and
+constructors that define the representation of the algebraic
+expressions on which the differentiator is to operate.
+
+a. Show how to do this in order to differentiate algebraic
+    expressions presented in infix form, such as `(x + (3 * (x +
+    (y + 2))))'.  To simplify the task, assume that `+' and `*'
+    always take two arguments and that expressions are fully
+    parenthesized.
+
+b. The problem becomes substantially harder if we allow standard
+    algebraic notation, such as `(x + 3 * (x + y + 2))', which
+    drops unnecessary parentheses and assumes that multiplication
+    is done before addition.  Can you design appropriate
+    predicates, selectors, and constructors for this notation
+    such that our derivative program still works?
+
+*Part A*
+
+#+begin_src scheme :results silent
+;; Selectors
+(define (multiplier p) (car p))
+
+(define (multiplicand p)
+  (foldl make-product 1 (cddr p)))
+
+(define (addend s) (car s))
+
+(define (augend s)
+  (foldl make-sum 0 (cddr s)))
+
+(define (base e)
+  (car e))
+
+(define (exponent e)
+  (caddr e))
+
+;; Predicates
+(define (sum? x)
+  (and (pair? x) (eq? (cadr x) '+)))
+
+(define (product? x)
+  (and (pair? x) (eq? (cadr x) '*)))
+
+(define (exponentation? x)
+  (and (pair? x) (eq? (cadr x) '**)))
+
+;; Constructors
+(define (make-sum a1 a2)
+  (cond ((=number? a1 0) a2)
+        ((=number? a2 0) a1)
+        ((and (number? a1) (number? a2)) (+ a1 a2))
+        (else (list a1 '+ a2))))
+
+(define (make-product m1 m2)
+  (cond ((or (=number? m1 0) (=number? m2 0)) 0)
+        ((=number? m1 1) m2)
+        ((=number? m2 1) m1)
+        ((and (number? m1) (number? m2)) (* m1 m2))
+        (else (list m1 '* m2))))
+
+(define (make-exponentation b e)
+  (cond ((=number? e 0) 1)
+        ((=number? e 1) b)
+        ((and (number? b) (number? e)) (expt b e))
+        (else (list b '** e))))
+#+end_src
+
+These are all the selectors, constructors and predicates that we need to change. The changes are pretty trivial, showing the power of abstraction. The next part will be more challenging.
+
+*Part B*
+And I was right. This is a lot more challenging. This took me a while to figure out, but I have finally got the answer and it feels good. There might be a way to optimize this solution, but for now, I am just ready to move onto the next problem.
+
+#+begin_src scheme :results silent
+;; Selectors
+(define (select-before-op op expr)
+  (let ((res (car (split-with-split-op op expr))))
+    (if (= (length res) 1) (car res) res)))
+
+(define (select-after-op op expr)
+  (let ((res (cdr (split-with-split-op op expr))))
+    (if (= (length res) 1) (car res) res)))
+
+(define (multiplier p)
+  (select-before-op '* p))
+
+(define (multiplicand p)
+  (select-after-op '* p))
+
+(define (addend s)
+  (select-before-op '+ s))
+
+(define (augend s)
+  (select-after-op '+ s))
+
+(define (base e)
+  (select-before-op '** e))
+
+(define (exponent e)
+  (select-after-op '** e))
+
+;; Predicates
+(define (sum? x)
+  (and (pair? x) (eq? (get-split-op x) '+)))
+
+(define (product? x)
+  (and (pair? x) (eq? (get-split-op x) '*)))
+
+(define (exponentation? x)
+  (and (pair? x) (eq? (get-split-op x) '**)))
+
+;; Constructors
+(define (make-sum a1 a2)
+  (let ((a1 (do-eval a1))
+        (a2 (do-eval a2)))
+    (cond ((=number? a1 0) a2)
+          ((=number? a2 0) a1)
+          ((and (number? a1) (number? a2)) (+ a1 a2))
+          (else (list a1 '+ a2)))))
+
+(define (make-product m1 m2)
+  (let ((m1 (do-eval m1))
+        (m2 (do-eval m2)))
+    (cond ((or (=number? m1 0) (=number? m2 0)) 0)
+          ((=number? m1 1) m2)
+          ((=number? m2 1) m1)
+          ((and (number? m1) (number? m2)) (* m1 m2))
+          (else (list m1 '* m2)))))
+
+(define (make-exponentation b e)
+  (let ((b (do-eval b))
+        (e (do-eval e)))
+    (cond ((=number? e 0) 1)
+          ((=number? e 1) b)
+          ((and (number? b) (number? e)) (expt b e))
+          (else (list b '** e)))))
+
+;; Helpers
+(define (variable? x) (symbol? x))
+
+(define (same-variable? v1 v2)
+  (and (variable? v1) (variable? v2) (eq? v1 v2)))
+
+(define (=number? exp num)
+  (and (number? exp) (= exp num)))
+
+(define operators '(** * +))
+
+(define (precedence op (num 1) (ops-list operators))
+  (cond ((null? ops-list) -1)
+        ((equal? op (car ops-list)) num)
+        (else (precedence op (add1 num) (cdr ops-list)))))
+
+(define (get-split-op expr)
+  (define (test x y)
+    (cond ((number? x) y)
+          ((> (precedence y) (precedence x)) y)
+          (else x)))
+  (foldl test -1 expr))
+
+(define (split-with-split-op op expr (selection null))
+  (cond ((null? expr) (error op "is not in" expr))
+        ((equal? (car expr) op) (cons (reverse selection) (cdr expr)))
+        (else (split-with-split-op op (cdr expr) (cons (car expr) selection)))))
+
+(define op-dict (make-hash (list (cons '+ make-sum)
+                                 (cons '* make-product)
+                                 (cons '** make-exponentation))))
+
+(define (do-eval expr)
+  (cond ((null? expr) (error expr "is empty"))
+        ((or (number? expr) (variable? expr)) expr)
+        (else (let* ((op (get-split-op expr))
+                     (first (select-before-op op expr))
+                     (second (select-after-op op expr)))
+                (list op (do-eval first) (do-eval second))))))
+#+end_src
+
+This problem required some additional helpers, but it is actually not as complicated as it seems. Here's how I thought about it. Because the expressions use infix notation and because there may be many operations within the same pair of parentheses, we now need to consider the order of operations. Recall PEMDAS from elementary school: Parentheses, exponent, multiplication, division, addition subtraction. We aren't using subtraction or addition, so the order is parentheses, exponent, multiplication and addition. We can ensure that parentheses are evaluated first by simply evaluating anything that is not a number. With this order of operations, we need a way to input an operation and get back a number so that we can compare the precedence of one operator to another. Therefore, I wrote a procedure called ~precedence~, which, given an operator, returns the index (1-based) of the operator in the ~operator~ list, which lists the operators in order of their precedence.
+
+With any expression, the aim is always to split it up into smaller and smaller pieces until we get atoms that can be evaluated on a very basic level. Now the question becomes: Where do we split the expression? It makes sense to first split the expression at the operator that has the lowest precedence because then we can simplify the higher-precedence expressions first. In this way, the lowest precedence operators get executed last, which is what we want. To determine the lowest precedence operator in an expression, I have implemented ~get-split-op~, which returns the operator that the expression will be split by. If there is more than one of such operators, the first occurence is the splitting operator. It doesn't particularly matter. Our predicates use ~get-split-op~. (4 * 9 ** 8 + 3 * 7 * 6) has a splitting operator of addition, so it will only pass the ~sum?~ test.
+
+(4 * 9 ** 8 + 3 * 7 * 6) gets split into (4 * 9 ** 8) + (3 * 7 * 6). However, to perform the addition, we first need to evaluate the constituent terms. This is where ~do-eval~, the star of the show, comes in handy. ~do-eval~ will simplify any expression. First, it asks whether the expression is a number or a variable. If so, it simply returns the expression. It cannot simplify anymore. If the expression has operations, ~do-eval~ splits the expression into two parts, which will both be recursively evaluated by ~do-eval~. It returns a list with the splitting operator first, the first part of the expression second and the second part of the expression third. This eventually simplifies to prefix notation. For example, when ~do-eval~ gets (4 * 9 ** 8 + 3 * 7 * 6), it simplifies to '(+ (* 4 (** 9 8)) (* 3 (* 7 6))).
+
+With this evaluation procedure in place, the final step is to integrate it into the constructors. The constructors pass all of their arguments through ~do-eval~, which converts them to prefix notation. That's pretty much it. I am proud of this solution.

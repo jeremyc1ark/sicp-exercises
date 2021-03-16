@@ -1,0 +1,26 @@
+#+TITLE: Exercise 2.48
+A directed line segment in the plane can be represented as a pair
+of vectors--the vector running from the origin to the start-point
+of the segment, and the vector running from the origin to the
+end-point of the segment. Use your vector representation from
+*Note Exercise 2-46:: to define a representation for segments
+with a constructor `make-segment' and selectors `start-segment'
+and `end-segment'.
+
+One does not actually need the vector representation to implement
+these procedures. This is one of the great things about
+abstractions; one can build off of more primitive data structures
+without explicitly referencing their constructors or selectors.
+This is an example of an abstraction barrier.
+
+#+header: :eval "no"
+#+begin_src scheme
+(define (make-segment v1 v2)
+  (cons v1 v2))
+
+(define (start-segment s)
+  (car s))
+
+(define (end-segment s)
+  (cdr s))
+#+end_src

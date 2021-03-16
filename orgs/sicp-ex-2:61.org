@@ -1,0 +1,21 @@
+*Exercise 2.61:* Give an implementation of `adjoin-set' using the
+ordered representation.  By analogy with `element-of-set?' show
+how to take advantage of the ordering to produce a procedure that
+requires on the average about half as many steps as with the
+unordered representation.
+
+#+begin_src scheme
+(define (adjoin-set x set (head null))
+  (cond ((null? set) (append head (list x)))
+        ((= x (car set)) (append head (list x) set))
+        ((> x (car set)) (adjoin-set x (cdr set) (append head (list (car set)))))
+        (else (append head (list x) set))))
+#+end_src
+
+This procedure is very similar to ~element-of-set?~.
+
+1. ~element-of-set?~ first asks whether the set is null. If it is null, that means that ~x~ is larger than all other items in the set, and therefore it is not in the set. So, it returns ~#f~. Similarly, ~adjoin-set~ also asks whether the set is null. If it is, it also means that ~x~ is larger than all other items in the set and therefore means that it should be placed last.
+2. Next, ~element-of-set?~ asks whether ~x~ is equal to ~(car set)~. If it is, then it returns ~#t~. ~adjoin-set~ asks the same question. If ~x~ is equal to ~(car set)~, then it inserts ~x~ between the preceding and following parts of the sets and returns that new set. This assumes that the sets allow duplicates. If not, then this condition could easily be removed.
+3. ~element-of-set?~ has no more questions to ask. If the set is not null and ~x~ is not equal to ~(car set)~, then does a recursive call on ~(cdr set)~. However, ~adjoin-set~ still has more questions. If ~x~ > ~(car set)~, it means that ~x~ needs to be placed later on in the set, so ~adjoin-set~ does a recursive call with ~(cdr set)~ as the argument for the ~set~. If we still have not satisfied any of the conditions, it means that ~x~ is less than ~(car set)~. Therefore, it should be placed before this term, and ~adjoin-set~ returns accourdingly.
+
+~adjoin-set~ and ~element-of-set?~ are similar procedures when operating on sorted sets because they both need to take on average n/2 steps. They stop once x is greater than the element before and less than the element after, which will happen on average halfway through the set.

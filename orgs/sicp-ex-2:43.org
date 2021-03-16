@@ -1,0 +1,69 @@
+#+TITLE: Exercise 2.43
+Louis Reasoner is having a terrible time doing *Note Exercise
+2-42::.  His `queens' procedure seems to work, but it runs
+extremely slowly.  (Louis never does manage to wait long enough
+for it to solve even the 6*6 case.)  When Louis asks Eva Lu Ator
+for help, she points out that he has interchanged the order of
+the nested mappings in the `flatmap', writing it as
+
+    (flatmap
+        (lambda (new-row)
+            (map (lambda (rest-of-queens)
+                (adjoin-position new-row k rest-of-queens))
+                (queen-cols (- k 1))))
+        (enumerate-interval 1 board-size))
+
+Explain why this interchange makes the program run slowly.
+Estimate how long it will take Louis's program to solve the
+eight-queens puzzle, assuming that the program in *Note Exercise
+2-42:: solves the puzzle in time T.
+
+Reasoner's program runs slowly because he has dramatically
+increased the number of recursive calls to ~queen-cols~. In the
+original program from Exercise 2.42, ~queen-cols~ is passed to
+~flatmap~, which is the outer loop. This means that, for every
+call to ~queen-cols~, there is only one direct recursive call. In
+Reasoner's program, this is not the case. He begins by iterating
+over the possible rows, a list that it much less computationally
+intensive to compute than the rest of the queen positions. Then,
+the computationally intensive work of finding the rest of the
+queen positions takes place in the inner loop. Every call to
+Reasoner's version of ~queen-cols~, results in a number of
+recursive calls equal to the number of rows in the board. This is
+a lot of redundant computation. Reasoner's program calls the same
+procedure with the same arguments multiple times.
+
+This demonstrates an important lesson: if possible, always do the
+computationally complex work in the outermost possible loop. Of
+course, this assumes that we do not have constructs such as
+~let~, which allow us to eliminate redundant computation. In both
+Reasoner's program and the program from the previous exercise, I
+would cache ~(queen-cols (- k 1))~ and ~(enumerate-interval 1
+board-size)~ in a ~let~ statement and then iterate over the
+cached variables. This way, the order of the nested loops is
+irrelevant; each iterable is computed only once. If Reasoner had
+used ~let~, his program would have run /faster/ than the original
+because he would have eliminated the redundant computations of
+~(enumerate-interval 1 board-size)~.
+
+The original program ran in time /T/. In the original program,
+/T/ is proportional to ~board-size~. The number of recursive
+calls in the original program is equivalent to ~board-size~. If
+we view this as a recursion "tree" diagram, the program has
+~board-size~ levels, each level containing 1 recursive call. In
+Reasoner's program, we can also construct a tree. The first level
+contains the initial call to ~queen-cols~. This call results in
+~board-size~ recursive calls to ~queen-cols~, bringing us to the
+second "level" of the tree. This cycle continues for each call to
+~queen-cols~ on each level. We know that the number of levels in
+Reasoner's tree will be the same as the number of levels in the
+original program because the argument of ~queen-cols~ is
+decremented by the same amount in both programs. However, the
+number of recursive calls /on/ each level will increase by a
+factor of ~board-size~. So, we can calculate that Reasoner's
+program have sum(n=1, ~board-size~: ~board-size~ ^ n) calls to
+~queen-cols~. The highest-degree term in this summation is
+~board-size~ ^ ~board-size~. So, if we express ~board-size~ as
+/n/, then the Big-O notation would be O(n ^ n). We explored
+earlier that /T/ is proportional to /n/, so we could also express
+this as O(T ^ T).

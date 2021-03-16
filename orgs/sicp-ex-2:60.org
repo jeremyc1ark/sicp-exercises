@@ -1,0 +1,19 @@
+*Exercise 2.60:* We specified that a set would be represented as a
+list with no duplicates.  Now suppose we allow duplicates.  For
+instance, the set {1,2,3} could be represented as the list `(2 3 2
+1 3 2 2)'.  Design procedures `element-of-set?', `adjoin-set',
+`union-set', and `intersection-set' that operate on this
+representation.  How does the efficiency of each compare with the
+corresponding procedure for the non-duplicate representation?  Are
+there applications for which you would use this representation in
+preference to the non-duplicate one?
+
+#+begin_src scheme :results silent
+(define (union-set set1 set2)
+  (cons set1 set2))
+
+(define (adjoin-set x set)
+  (cons x set))
+#+end_src
+
+Even if there are duplicates in the sets, all of the previously defined predicates and constructors would still work just fine. In fact, ~element-of-set?~ and ~intersection-set~ pretty much have to stay the same. However, we can change ~union-set~ and ~adjoin-set~ to make them more efficient. If duplicates are allowed, then ~cons~\ing the two sets together would work for ~union-set~ and consing ~x~ into ~set~ would work for adjoin set. This is much more efficient because you do not have repeatedly check for duplicates. However, I cannot think of an application for this implementation. Sets are not supposed to have duplicates. If they did, it would take longer to get information from them because you would have to search through more elements, some of which would be unneccesary. While this may be a more efficient way to /combine/ sets, it is not more efficient when you try to get information out of the sets.

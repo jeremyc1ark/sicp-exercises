@@ -1,0 +1,117 @@
+*Exercise 2.63:* Each of the following two procedures converts a
+binary tree to a list.
+
+    (define (tree->list-1 tree)
+    (if (null? tree)
+        '()
+        (append (tree->list-1 (left-branch tree))
+                (cons (entry tree)
+                        (tree->list-1 (right-branch tree))))))
+
+    (define (tree->list-2 tree)
+    (define (copy-to-list tree result-list)
+        (if (null? tree)
+            result-list
+            (copy-to-list (left-branch tree)
+                        (cons (entry tree)
+                                (copy-to-list (right-branch tree)
+                                            result-list)))))
+    (copy-to-list tree '()))
+
+a. Do the two procedures produce the same result for every tree?
+    If not, how do the results differ?  What lists do the two
+    procedures produce for the trees in *Note Figure 2-16::?
+
+b. Do the two procedures have the same order of growth in the
+    number of steps required to convert a balanced tree with n
+    elements to a list?  If not, which one grows more slowly?
+
+*Part A*
+
+#+begin_src scheme :results output
+(define tree-1 (list 7
+                     (list 3
+                           (list 1 null null)
+                           (list 5 null null))
+                     (list 9
+                           null
+                           (list 11 null null))))
+
+(define tree-2 (list 3
+                     (list 1 null null)
+                     (list 7
+                           (list 5 null null)
+                           (list 9
+                                 null
+                                 (list 11 null null)))))
+
+(define tree-3 (list 5
+                     (list 3
+                           (list 1 null null)
+                           null)
+                     (list 9
+                           (list 7 null null)
+                           (list 11 null null))))
+
+(define (entry tree) (car tree))
+
+(define (left-branch tree) (cadr tree))
+
+(define (right-branch tree) (caddr tree))
+
+(define (make-tree entry left right)
+  (list entry left right))
+(define (tree->list-1 tree)
+
+(if (null? tree)
+    null
+    (append (tree->list-1 (left-branch tree))
+            (cons (entry tree)
+                    (tree->list-1 (right-branch tree))))))
+
+(define (tree->list-2 tree)
+  (define (copy-to-list tree result-list)
+    (if (null? tree)
+        result-list
+        (copy-to-list (left-branch tree)
+                      (cons (entry tree)
+                            (copy-to-list (right-branch tree)
+                                          result-list)))))
+  (copy-to-list tree '()))
+
+(define print-list (list "Doing tree 1\n"
+                         (tree->list-1 tree-1)
+                         "\n"
+                         (tree->list-2 tree-1)
+                         "\n\nDoing tree 2\n"
+                         (tree->list-1 tree-2)
+                         "\n"
+                         (tree->list-2 tree-2)
+                         "\n\nDoing tree 3\n"
+                         (tree->list-1 tree-3)
+                         "\n"
+                         (tree->list-2 tree-3)))
+
+(for ((i print-list))
+  (display i))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Doing tree 1
+(1 3 5 7 9 11)
+(1 3 5 7 9 11)
+
+Doing tree 2
+(1 3 5 7 9 11)
+(1 3 5 7 9 11)
+
+Doing tree 3
+(1 3 5 7 9 11)
+(1 3 5 7 9 11)
+#+end_example
+
+As can be seen from the results of this experiment, the procedures produce the same results.
+
+*Part B*
+Both procedures will take the same number of steps, and will run in O(n). Both procedures have the same terminating condition: ~(null? tree)~. If the tree is not null, the result is two recursive calls. The procedures have different ways of constructing the final list. ~tree->list-1~ does recursive calls on its constituent leaves to get their lists, then ~cons~\es the entry into the resulting list for the right side of the tree, then appends this onto the resulting list for the right side of the tree. ~tree->list-2~, on the other hand, performs a recursive call with another recursive call inside. However, in both situations the execution is fundamentally the same: if the terminating condition is not met, perform two recursive calls. These calls move down the tree at the same rate, so one procedure will not take more steps than the other.

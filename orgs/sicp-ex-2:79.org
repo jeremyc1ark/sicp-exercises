@@ -1,0 +1,39 @@
+*Exercise 2.79:* Define a generic equality predicate `equ?' that
+tests the equality of two numbers, and install it in the generic
+arithmetic package.  This operation should work for ordinary
+numbers, rational numbers, and complex numbers.
+
+#+begin_src scheme :results silent
+(define (install-equ?-package)
+  ;; Helpers
+  (define (both-ordinary? a b)
+    (and (equal? (type-tag a) 'scheme-number)
+         (equal? (type-tag b) 'scheme-number)))
+
+  (define (equ-two-part a b selector1 selector2)
+    (if (and (both-ordinary? (selector1 a) (selector1 b))
+             (both-ordinary? (selector2 a) (selector2 b)))
+        (and (equ-ordinary (selector1 a) (selector1 b))
+             (equ-ordianry (selector2 a) (selector2 b)))
+        (and (apply-generic equ? (selector1 a) (selector1 b))
+             (apply-generic equ? (selector2 a) (selector2 b)))))
+  ;; Definitions
+  (define (equ-ordinary a b)
+    (= a b))
+
+  (define (equ-rational a b)
+    (equ-two-part a b numer denom))
+
+  (define (equ-complex a b)
+    (equ-two-part a b real-part imag-part))
+
+  ;; Installation
+  (put 'equ? '(complex complex) equ-complex)
+  (put 'equ? '(scheme-number scheme-number) equ-ordinary)
+  (put 'equ? '(rational rational) equ-rational))
+
+install-equ?-package
+
+(define (equ? a b)
+  (apply-generic 'equ? a b))
+#+end_src

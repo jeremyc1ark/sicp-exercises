@@ -1,0 +1,60 @@
+*Exercise 2.71:* Suppose we have a Huffman tree for an alphabet of
+n symbols, and that the relative frequencies of the symbols are 1,
+2, 4, ..., 2^(n-1).  Sketch the tree for n=5; for n=10.  In such a
+tree (for general n) how may bits are required to encode the most
+frequent symbol?  the least frequent symbol?
+
+#+begin_src scheme :results silent
+(define alphabet "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+(define (obscure-formula n)
+  (define (iter x (results null))
+    (if (= x n)
+        results
+        (iter (add1 x) (cons
+                        (make-leaf (string-ref alphabet (sub1 x))
+                                   (expt 2 x))
+                        results))))
+  (if (< n 1)
+      null
+      (iter 1)))
+#+end_src
+
+I wrote the above procedure to do the heavylifting for me. ~obscure-formula~ made the list of leaves for me, and then I plugged the results into ~generate-huffman-tree~.
+
+*n = 5*
+
+#+begin_src scheme :results silent
+'((((leaf 'A 2) (leaf 'B 4) ('A 'B) 6) (leaf 'C 8) ('A 'B 'C) 14)
+      (leaf 'D 16)
+      ('A 'B 'C 'D)
+      30)
+#+end_src
+
+We have conveniently alphabetized the weights of the leaves. The least frequent symbol is 'A, and the most frequent is 'D. Tracing them back to the head, we find that it takes 3 and 1 bits to represent 'A and 'D, respectively.
+
+*n = 10*
+
+#+begin_src scheme :results silent
+'(((((((((leaf 'A 2) (leaf 'B 4) ('A 'B) 6) (leaf 'C 8) ('A 'B 'C) 14)
+       (leaf 'D 16)
+       ('A 'B 'C 'D)
+       30)
+      (leaf 'E 32)
+      ('A 'B 'C 'D 'E)
+      62)
+     (leaf 'F 64)
+     ('A 'B 'C 'D 'E 'F)
+     126)
+    (leaf 'G 128)
+    ('A 'B 'C 'D 'E 'F 'G)
+    254)
+   (leaf 'H 256)
+   ('A 'B 'C 'D 'E 'F 'G 'H)
+   510)
+  (leaf 'I 512)
+  ('A 'B 'C 'D 'E 'F 'G 'H 'I)
+  1022)
+#+end_src
+
+Analyzing this tree, we can see that it takes 8 and 1 bits to represent 'A and 'I, respectively.

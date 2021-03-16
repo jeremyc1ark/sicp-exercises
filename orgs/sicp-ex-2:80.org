@@ -1,0 +1,36 @@
+*Exercise 2.80:* Define a generic predicate `=zero?' that tests if
+its argument is zero, and install it in the generic arithmetic
+package.  This operation should work for ordinary numbers, rational
+numbers, and complex numbers.
+
+#+begin_src scheme :results silent
+(define (install-=zero?)
+  ;; Helper
+  (define (ordinary? x)
+    (equal? (type-tag x) 'scheme-number))
+  ;; Definitions
+  (define (=zero?-ordinary x)
+    (zero? x))
+
+  (define (=zero?-rational x)
+    (if (ordinary? (numer x))
+        (=zero?-ordinary x)
+        (=zero? (numer x))))
+
+  (define (=zero?-complex x)
+    (let ((real (real-part x))
+          (imag (imag-part x)))
+      (if (both-ordinary? real imag)
+          (and (=zero?-ordinary real)
+               (=zero?-ordinary imag))
+          (and (=zero? real) (=zero? imag)))))
+  ;; Installations
+  (put '=zero? 'scheme-number =zero?-ordinary)
+  (put '=zero? 'rational =zero?-rational)
+  (put '=zero? 'complex =zero?-complex))
+
+install-=zero?
+
+(define (=zero? x)
+  (apply-generic '=zero? x))
+#+end_src
