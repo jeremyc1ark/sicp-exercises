@@ -1,0 +1,93 @@
+*Exercise 2.89:* Define procedures that implement the term-list
+representation described above as appropriate for dense
+polynomials.
+
+#+begin_src scheme :results silent
+(define (install-poly-package)
+  (define (make-poly var terms)
+    (list var terms))
+
+  (define (variable p) (cadr p))
+  (define (term-list p) (caddr p))
+
+  (define (zip-together l1 l2 (res null))
+    (if (null? l1)
+        res
+        (zip-together (cdr l1)
+                      (cdr l2)
+                      (append res (list (add (car l1) (car l2)))))))
+
+  (define (add-poly p1
+                    p2
+                    (p1-len (length p1))
+                    (p2-len (length p2))
+                    (new-poly null))
+    (cond ((null? p1) (append new-poly p2))
+          ((null? p2) (append new-poly p1))
+          ((> p1-len p2-len)
+           (add-poly (cdr p1)
+                     p2
+                     (sub1 p1-len)
+                     p2
+                     (append new-poly (list (car p1)))))
+          ((< p1-len p2-len)
+           (add-poly p1
+                     (cdr p2)
+                     p1-len
+                     (sub1 p2-len)
+                     (append new-poly (list (car p2)))))
+          ((= p1-len p2-len) (append new-poly (zip-together p1 p2)))))
+
+  (define (sub-poly p1 p2)
+    (add-poly p1 (map negate p2)))
+
+  (define (coeff y)
+    (car y))
+
+  (define (order y)
+    (cdr y))
+
+  (define (add-zeros p n)
+    (if (zero? n)
+        p
+        (add-zeros (append p (list 0)) (sub1 n))))
+
+  (define (sparse->dense p (len (order (car p))) (res null))
+    (cond ((null? p) (add-zeros res len))
+          ((equ? (order (car p)) len) (append res (list (coeff (car p)))))
+          (else (sparse->dense (cdr p) (sub1 len) (append res (list 0))))))
+
+  (define (mul-single x p (res null))
+    (if (null? p)
+        (sparse->dense res)
+        (mul-single x (cdr p) (append res (cons (mul (coeff x)
+                                                     (coeff (car p)))
+                                                (add (order x)
+                                                     (order (car p))))))))
+
+  (define (mul-poly p1 p2 (res null))
+    (if (null? p1)
+        (foldl add-poly (car res) (cdr res))
+        (mul-poly (cdr p1)
+                  p2
+                  (cons (mul-single (car p1) p2) res))))
+
+  (define (tag p) (attach-tag 'polynomial p))
+
+  (define (generic-put-proc op)
+    (define (returned-proc x y)
+      (if (not (equal? (variable x) (variable y)))
+          (error "Cannot combine two polynomials with different variables")
+          (tag (append (list (variable x))
+                       (op (term-list x) (term-list y))))))
+    (returned-proc))
+
+  (put 'add '(polynomial polynomial)
+       (generic-put-proc add-poly))
+  (put 'sub '(polynomial polynomial)
+       (generic-put-proc sub-poly))
+  (put 'mul '(polynomial polynomial)
+       (generic-put-proc mul-poly)))
+
+(install-poly-package)
+#+end_src

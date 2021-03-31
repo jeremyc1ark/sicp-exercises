@@ -1,0 +1,53 @@
+*Exercise 2.88:* Extend the polynomial system to include
+subtraction of polynomials.  (Hint: You may find it helpful to
+define a generic negation operation.)
+
+#+begin_src scheme :results silent
+(define (install-negate)
+  (define (negate-ordinary x)
+    (let ((x (contents x)))
+      (* -1 x)))
+
+  (define (negate-rational x)
+    (let ((numerator (numer x))
+          (denomintator (denom x)))
+      (attach-tag 'rational (list (mul -1 numerator) denominator))))
+
+  ;; Are real numbers a superset of ordinaries with floats included?
+  ;; I'm assuming so
+  (define (negate-real x)
+    (let ((x (contents x)))
+      (attach-tag 'real (* -1 x))))
+
+  (define (negate-complex x)
+    (let ((real (real-part x))
+          (imag (imag-part x)))
+      (make-complex-from-real-imag (mul -1 real) (mul -1 imag))))
+
+  (define (negate-poly x)
+    (define (negate-term y)
+      (let ((coefficient (coeff y))
+            (order (order y)))
+        (list (negate coefficient) order)))
+    (attach-tag 'polynomial (map negate-term (term-list x))))
+
+  ;; Installation
+  (put 'negate 'scheme-number negate-ordinary)
+  (put 'negate 'rational negate-rational)
+  (put 'negate 'real negate-real)
+  (put 'negate 'complex negate-complex)
+  (put 'negate 'polynomial negate-poly))
+
+(install-negate)
+
+(define (negate x)
+  (apply-generic 'negate x))
+
+(define (install-sub-polynomial)
+  (define (sub-polynomial x y)
+    (add x (negate y)))
+
+  (put 'sub 'polynomial sub-polynomial))
+
+(install-sub-polynomial)
+#+end_src

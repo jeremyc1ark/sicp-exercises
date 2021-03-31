@@ -1,0 +1,176 @@
+*Exercise 2.90:* Suppose we want to have a polynomial system that
+is efficient for both sparse and dense polynomials.  One way to do
+this is to allow both kinds of term-list representations in our
+system.  The situation is analogous to the complex-number example
+of section *Note 2-4::, where we allowed both rectangular and
+polar representations.  To do this we must distinguish different
+types of term lists and make the operations on term lists generic.
+Redesign the polynomial system to implement this generalization.
+This is a major effort, not a local change.
+
+#+begin_src scheme :results silent
+;; Dense Representation
+(define (dense-term-list-dense p)
+  (cdr p))
+
+(define (zip-together l1 l2 op (res null))
+  (if (null? l1)
+      res
+      (zip-together (cdr l1)
+                    (cdr l2)
+                    op
+                    (append res (list (op (car l1) (car l2)))))))
+
+(define (sparse-term-list-dense p)
+  (define (make-orders t (c 0))
+    (if (null? t)
+        null
+        (cons c (make-orders (cdr t) (add1 c)))))
+  (let ((terms (dense-term-list-dense p)))
+    (zip-together (make-orders terms) terms cons)))
+
+(put 'dense-term-list 'dense dense-term-list-dense)
+(put 'sparse-term-list 'dense sparse-term-list-dense)
+
+;; Sparse Representation
+(define (sparse-term-list-sparse p)
+  (cadr p))
+
+(define (dense-term-list-sparse p)
+  (define (convert terms (res null))
+    (define (make-null-terms n (res null))
+      (if (zero? n)
+          res
+          (make-null-terms (sub1 n) (cons (cons 0 0) res))))
+    (let* ((1st-term (car terms))
+           (1st-coeff (cdr 1st-term))
+           (1st-order (car 1st-term))
+           (2nd-order (if (null? cdr terms) 0 (caadr terms))))
+      (cond ((null? terms) res)
+            ((equ? 1 (sub 1st-order 2nd-order))
+             (convert (cdr terms) (append res 1st-coeff)))
+            (else (convert (cdr terms)
+                           (append res (make-null-terms (sub 1st-order 2nd-order))))))))
+  (convert (sparse-term-list-sparse p)))
+
+(put 'dense-term-list 'sparse dense-term-list-sparse)
+(put 'sparse-term-list 'sparse sparse-term-list-sparse)
+
+;; Generic Selectors
+(define (variable p)
+  (car (contents p)))
+
+(define (dense-term-list p)
+  (apply-generic '(dense-term-list) p))
+
+(define (sparse-term-list p)
+  (apply-generic '(sparse-term-list) p))
+
+;; Constructors
+(define (dense->sparse p)
+  (let ((p (contents p)))
+    (attach-tag 'sparse (cons (variable p) (sparse-term-list p)))))
+
+(define (sparse->dense p)
+  (let ((p (contents p)))
+    (attach-tag 'dense (cons (variable p) (dense-term-list p)))))
+
+;; Installation
+(define (install-poly-package)
+  (define (combine p1 p2 t)
+    (if (not (eq? (variable p1) (variable p2)))
+        (error "Cannot combine two polynomials with the different variables")
+        (cons (variable p1) t)))
+
+  (define (add-dense-poly p1 p2 (l1 (length p1)) (l2 (length p2)) (res null))
+    (define (recur t1 t2 (l1 (length t1)) (l2 (length t2)) (res null))
+      (cond ((null? t1) (append res t2))
+            ((null? t2) (append res t1))
+            ((> l1 l2) (add-dense-poly (cdr t1)
+                                       t2
+                                       (sub1 l1)
+                                       l2
+                                       (append res (car t1))))
+            ((< l1 l2) (add-dense-poly t1
+                                       (cdr t2)
+                                       l1
+                                       (sub1 l2)
+                                       (append res (car t2))))
+            (else (zip-together t1 t2 add))))
+    (combine p1 p2 (recur (dense-term-list p1)
+                          (dense-term-list p2))))
+
+  (define (add-sparse-poly p1 p2)
+    (define (recur t1 t2 (res null))
+      (cond ((null? t1) (append res t2))
+            ((null? t2) (append res t1))
+            ((> (order (car t1)) (order (car t2)))
+             (recur (cdr t1) t2 (append res (list (car t1)))))
+            ((< (order (car t1)) (order (car t2)))
+             (recur t1 (cdr t2) (append res (list (car t2)))))
+            (else (recur (cdr t1)
+                         (cdr t2)
+                         (append res
+                                 (list (cons (order (car t1))
+                                             (add (coeff (car t1))
+                                                  (coeff (car t2))))))))))
+    (combine p1 p2 (recur (sparse-term-list p1)
+                          (sparse-term-list p2))))
+
+  (define (negate-sparse-poly p)
+    (let ((terms (sparse-term-list p))
+          (var (variable p)))
+      (cons var
+            (map (lambda (x) (mul -1 x)) terms))))
+
+  (define (negate-dense-poly p)
+    (let ((terms (dense-term-list p))
+          (var (variable p)))
+      (cons var
+            (map (lambda (x) (cons (order x) (mul -1 (coeff x))))
+                 terms))))
+
+  (define (sub-sparse-poly p1 p2)
+    (add-sparse-poly p1 (negate-sparse-poly p2)))
+
+  (define (sub-dense-poly p1 p2)
+    (add-dense-poly p1 (negate-dense-poly p2)))
+
+  (define (mul-sparse-poly p1 p2)
+    (define (mul-term t1 t2)
+      (cons (add (order t1) (order t2))
+            (mul (coeff t1) (coeff t2))))
+    (define (add-term t1 t2)
+      (cons (order t1)
+            (add (coeff t1) (coeff t2))))
+    (define (mul-term-with-poly t p)
+      (map (lambda (x) (mul-term t x)) p))
+    (define foiled-out (foldl append
+                              null
+                              (map (lambda (y)
+                                     (mul-term-with-poly y (sparse-term-list p2)))
+                                   (sparse-term-list p1))))
+    (define sorted (sort foiled-out
+                         (lambda (x y) (> (order x)
+                                          (order y)))))
+    (define (reduction x y)
+      (if (equ? (order x) (order (car y)))
+          (cons (add-term x (car y)) (cdr y))
+          (cons x y)))
+    (combine p1 p2 (foldl reduction (cons 0 0) sorted)))
+
+  (define (mul-dense-poly p1 p2)
+    (sparse->dense (mul-sparse-poly (dense->sparse p1)
+                                    (dense->sparse p2))))
+
+  (put 'mul 'dense mul-dense-poly)
+  (put 'mul 'sparse mul-sparse-poly)
+  (put 'sub 'dense sub-dense-poly)
+  (put 'sub 'sparse sub-sparse-poly)
+  (put 'add 'dense add-dense-poly)
+  (put 'add 'sparse add-sparse-poly))
+
+(install-poly-package)
+#+end_src
+
+There is probably a more concise way to do this.

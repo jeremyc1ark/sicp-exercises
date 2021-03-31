@@ -1,0 +1,13 @@
+*Exercise 2.87:* Install `=zero?' for polynomials in the generic
+arithmetic package.  This will allow `adjoin-term' to work for
+polynomials with coefficients that are themselves polynomials.
+
+#+begin_src scheme :results silent
+(define (install-=zero?-polynomial)
+  (define (=zero?-polynomial x)
+    (cond ((null? x) #t)
+          ((equ? (coeff (first-term x)) 0) (=zero?-polynomial (rest-terms x)))
+          (else #f)))
+
+  (put '=zero? 'polynomial =zero?-polynomial))
+#+end_src

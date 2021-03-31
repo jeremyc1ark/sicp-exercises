@@ -1,0 +1,48 @@
+*Exercise 2.96:*
+    a. Implement the procedure `pseudoremainder-terms', which is
+        just like `remainder-terms' except that it multiplies the
+        dividend by the integerizing factor described above before
+        calling `div-terms'.  Modify `gcd-terms' to use
+        `pseudoremainder-terms', and verify that
+        `greatest-common-divisor' now produces an answer with integer
+        coefficients on the example in *Note Exercise 2-95::.
+
+    b. The GCD now has integer coefficients, but they are larger
+        than those of P_1.  Modify `gcd-terms' so that it removes
+        common factors from the coefficients of the answer by
+        dividing all the coefficients by their (integer) greatest
+        common divisor.
+
+*Part A*
+#+begin_src scheme :results silent
+(define (pseudoremainder-terms P Q)
+  (let* ((o1 (order (car P)))
+         (o2 (order (car Q)))
+         (c (coeff (car Q)))
+         (int-fact (expt c (add 1 (sub o1 o2))))
+         (P (mul P (cons 0 int-fact))))
+    (cdr (div-terms P Q))))
+
+(define (gcd-terms l1 l2)
+  (if (empty-termlist? l1)
+      l2
+      (gcd-terms l2 (pseudoremainder-terms l1 l2))))
+#+end_src
+
+Again, I would need to compile all the code that is scattered across multiple exercises to verify that ~greatest-common-divisor~ produces an answer with integer coefficients. I will take SICP's word for it this time.
+
+*Part B*
+#+begin_src scheme :results silent
+(define (simplify-term-list l)
+  (define (op t)
+    (let* ((c (coeff t))
+           (new-c (/ c (gcd c)))
+           (o (order t)))
+      (cons o new-c)))
+  (map op l))
+
+(define (gcd-terms l1 l2)
+  (if (empty-termlist? l1)
+      l2
+      (gcd-terms l2 (simplify-term-list (remainder-terms l1 l2)))))
+#+end_src

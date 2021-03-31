@@ -1,0 +1,62 @@
+*Exercise 2.93:* Modify the rational-arithmetic package to use
+generic operations, but change `make-rat' so that it does not
+attempt to reduce fractions to lowest terms.  Test your system by
+calling `make-rational' on two polynomials to produce a rational
+function
+
+    (define p1 (make-polynomial 'x '((2 1)(0 1))))
+    (define p2 (make-polynomial 'x '((3 1)(0 1))))
+    (define rf (make-rational p2 p1))
+
+#+begin_src scheme :results silent
+(define (install-rational-package)
+  ;; internal procedures
+  (define (numer x) (car x))
+  (define (denom x) (cdr x))
+  (define (make-rat n d)
+    (cons n d))
+  (define (add-rat x y)
+    (make-rat (add (mul (numer x) (denom y))
+                 (mul (numer y) (denom x)))
+              (mul (denom x) (denom y))))
+  (define (sub-rat x y)
+    (make-rat (sub (mul (numer x) (denom y))
+                 (mul (numer y) (denom x)))
+              (mul (denom x) (denom y))))
+  (define (mul-rat x y)
+    (make-rat (mul (numer x) (numer y))
+              (mul (denom x) (denom y))))
+  (define (div-rat x y)
+    (make-rat (mul (numer x) (denom y))
+              (mul (denom x) (numer y))))
+
+  ;; interface to rest of the system
+  (define (tag x) (attach-tag 'rational x))
+  (put 'add '(rational rational)
+       (lambda (x y) (tag (add-rat x y))))
+  (put 'sub '(rational rational)
+       (lambda (x y) (tag (sub-rat x y))))
+  (put 'mul '(rational rational)
+       (lambda (x y) (tag (mul-rat x y))))
+  (put 'div '(rational rational)
+       (lambda (x y) (tag (div-rat x y))))
+
+  (put 'make 'rational
+       (lambda (n d) (tag (make-rat n d))))
+  'done)
+
+(define (make-rational n d)
+  ((get 'make 'rational) n d))
+
+(install-rational-package)
+
+(define p1 (make-polynomial 'x '((2 1)(0 1))))
+(define p2 (make-polynomial 'x '((3 1)(0 1))))
+(define rf (make-rational p2 p1))
+
+(add rf rf)
+#+end_src
+
+I am not testing this because it would require porting over the entire generic operators program, which would be such a hassle and would not contribute to my learning. I get the point, though. When you use generic operators, paired with coercion hierarchies, you can recursively delegate operations to the highest level term. The point of the code above is to take advantage of the generic operators to deal with non-real coefficients or orders in the numerators and denominators.
+
+When we add ~rf~ to itself, the resulting fraction is not reduced because we removed the ~gcd~ procedure from ~make-rat~. For now, this is the appropriate action to take because ~gcd~ is not a generic procedure, and therefore would be unable to determine the greatest common denominator of some other data type like a polynomial. We would have to implement this ourselves.
