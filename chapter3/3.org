@@ -1,0 +1,48 @@
+*Exercise 3.3:* Modify the `make-account' procedure so that it
+creates password-protected accounts.  That is, `make-account'
+should take a symbol as an additional argument, as in
+
+    (define acc (make-account 100 'secret-password))
+
+The resulting account object should process a request only if it
+is accompanied by the password with which the account was created,
+and should otherwise return a complaint:
+
+    ((acc 'secret-password 'withdraw) 40)
+    60
+
+    ((acc 'some-other-password 'deposit) 50)
+    "Incorrect password"
+
+#+begin_src scheme :results list
+(define (make-account balance password)
+  (define (invalid-password-attempt? entry)
+    (not (eq? entry password)))
+  (define (withdraw n)
+    (if (>= balance n)
+        (begin (set! balance (- balance n))
+               balance)
+        "Insufficient funds."))
+  (define (deposit n)
+    (set! balance (+ balance n))
+    balance)
+  (define (dispatch p f)
+    (cond ((invalid-password-attempt? p) (lambda (x) "Incorrect password."))
+          ((eq? f 'deposit) deposit)
+          ((eq? f 'withdraw) withdraw)
+          (else (lambda (x) "Unrecognized function name."))))
+  dispatch)
+
+(define acc (make-account 100 'secret-password))
+(list
+ ((acc 'secret-password 'withdraw) 40)
+ ((acc 'some-other-password 'deposit) 50)
+ ((acc 'secret-password 'foo) 1)
+ ((acc 'secret-password 'withdraw) 1000))
+#+end_src
+
+#+RESULTS:
+- 60
+- Incorrect password.
+- Unrecognized function name.
+- Insufficient funds.

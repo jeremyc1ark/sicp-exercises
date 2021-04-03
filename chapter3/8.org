@@ -1,0 +1,27 @@
+*Exercise 3.8:* When we defined the evaluation model in section
+*Note 1-1-3::, we said that the first step in evaluating an
+expression is to evaluate its subexpressions.  But we never
+specified the order in which the subexpressions should be
+evaluated (e.g., left to right or right to left).  When we
+introduce assignment, the order in which the arguments to a
+procedure are evaluated can make a difference to the result.
+Define a simple procedure `f' such that evaluating `(+ (f 0) (f
+1))' will return 0 if the arguments to `+' are evaluated from left
+to right but will return 1 if the arguments are evaluated from
+right to left.
+
+#+begin_src scheme
+(define f
+  (let ((x -1))
+    (lambda (a)
+      (if (= x -1)
+          (begin (set! x a)
+                 0)
+          x))))
+#+end_src
+
+This took a bit longer to write than I expected. Here's how it works. ~f~ is a procedure, but it changes based on how many times it has been called. First, it starts a new scope, where ~x~ is set to -1. In that scope, it returns an anonymous function, which takes ~a~. Ultimately, ~f~ is the anonymous function, so ~f~ takes ~a~. If ~x~ is -1, it means that the anonymous function has never been called yet because -1 is the original value of ~x~ (unless ~a~ is -1). So, it sets ~x~ to ~a~ and returns 0. If ~x~ is not equal to -1, it simply returns ~x~.
+
+If we were to evaluate ~(+ (f 0) (f 1))~ from left to right, ~x~ would start at -1, so ~(f 0)~ would set ~x~ to 0 and then return 0. Now, ~x~ is zero, which makes the condition false, so ~(f 1)~ returns the ~else~ statement of 0. Summing both of these results gives 0.
+
+If we were to evaluate that same expression from right to left, the first call would be ~(f 1)~, which would set ~x~ to 1 and return 0. Then, it would evaluate ~(f 2)~ with ~x~ set to 1. Since ~x~ is one, the first condition is false, so it would return ~x~, which is 1. Summing both of these results gives 1.

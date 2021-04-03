@@ -1,0 +1,52 @@
+*Exercise 3.4:* Modify the `make-account' procedure of *Note
+Exercise 3-3:: by adding another local state variable so that, if
+an account is accessed more than seven consecutive times with an
+incorrect password, it invokes the procedure `call-the-cops'.
+
+#+begin_src scheme :results output
+(define (make-account balance password)
+  (define (invalid-password-attempt? entry)
+    (not (eq? entry password)))
+  (define (withdraw n)
+    (if (>= balance n)
+        (begin (set! balance (- balance n))
+               balance)
+        "Insufficient funds."))
+  (define (deposit n)
+    (set! balance (+ balance n))
+    balance)
+  (define (call-the-cops) (lambda (x) "911, what's your emergency?"))
+  (let ((attempt-counter 0))
+    (define (dispatch p f)
+      (cond ((invalid-password-attempt? p) (if (> attempt-counter 7)
+                                               (call-the-cops)
+                                               (begin (set! attempt-counter
+                                                        (add1 attempt-counter))
+                                                      (lambda (x) "Invalid password."))))
+            ((eq? f 'deposit) deposit)
+            ((eq? f 'withdraw) withdraw)
+            (else (lambda (x) "Unrecognized function name."))))
+    dispatch))
+
+(define acc (make-account 100 'secret-password))
+
+(define (loop n f args x)
+  (if (> n 0)
+      (begin (display ((apply f args) x))
+             (display "\n")
+             (apply loop (list (sub1 n) f args x)))
+      'Done.))
+
+(loop 9 acc (list 'bad-pswrd 'withdraw) 1)
+#+end_src
+
+#+RESULTS:
+: Invalid password.
+: Invalid password.
+: Invalid password.
+: Invalid password.
+: Invalid password.
+: Invalid password.
+: Invalid password.
+: Invalid password.
+: 911, what's your emergency?

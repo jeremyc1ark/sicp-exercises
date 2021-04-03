@@ -1,0 +1,72 @@
+*Exercise 3.7:* Consider the bank account objects created by
+`make-account', with the password modification described in *Note
+Exercise 3-3::.  Suppose that our banking system requires the
+ability to make joint accounts.  Define a procedure `make-joint'
+that accomplishes this.  `Make-joint' should take three arguments.
+The first is a password-protected account.  The second argument
+must match the password with which the account was defined in
+order for the `make-joint' operation to proceed.  The third
+argument is a new password.  `Make-joint' is to create an
+additional access to the original account using the new password.
+For example, if `peter-acc' is a bank account with password
+`open-sesame', then
+
+    (define paul-acc
+    (make-joint peter-acc 'open-sesame 'rosebud))
+
+will allow one to make transactions on `peter-acc' using the name
+`paul-acc' and the password `rosebud'.  You may wish to modify your
+solution to *Note Exercise 3-3:: to accommodate this new feature
+
+#+begin_src scheme :results list
+(define (make-account balance password)
+  (define (member? x l)
+    (cond ((null? l) #f)
+          ((equal? (car l) x) #t)
+          (else (member? x (cdr l)))))
+  (define (withdraw n)
+    (if (>= balance n)
+        (begin (set! balance (- balance n))
+               balance)
+        "Insufficient funds."))
+  (define (deposit n)
+    (set! balance (+ balance n))
+    balance)
+  (define (call-the-cops) (lambda (x) "911, what's your emergency?"))
+  (let ((attempt-counter 0)
+        (pswrds (list password)))
+  (define (invalid-password-attempt? entry)
+    (not (member? entry pswrds)))
+  (define (add-new-password p)
+    (set! pswrds (cons p pswrds)))
+    (define (dispatch p f)
+      (cond ((invalid-password-attempt? p) (if (> attempt-counter 7)
+                                               (call-the-cops)
+                                               (begin (set! attempt-counter
+                                                        (add1 attempt-counter))
+                                                      (lambda (x) "Invalid password."))))
+            ((eq? f 'deposit) deposit)
+            ((eq? f 'withdraw) withdraw)
+            ((eq? f 'add-new-password) add-new-password)
+            (else (lambda (x) "Unrecognized function name."))))
+    dispatch))
+
+(define (make-joint acc pswrd new-pswrd)
+  (begin ((acc pswrd 'add-new-password) new-pswrd)
+         acc))
+
+(define fred-acc (make-account 100 'ontario))
+(define paul-acc (make-joint fred-acc 'ontario 'hello))
+
+(list
+ ((fred-acc 'ontario 'withdraw) 10)
+ ((fred-acc 'hello 'withdraw) 10)
+ ((paul-acc 'ontario 'withdraw) 10)
+ ((paul-acc 'hello 'withdraw) 10))
+#+end_src
+
+#+RESULTS:
+- 90
+- 80
+- 70
+- 60
