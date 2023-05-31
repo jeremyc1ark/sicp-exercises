@@ -1,0 +1,51 @@
+* Summary of SICP Chapter 2
+It's been quite a long time since I looked at SICP (Structure and Interpretation of Computer Programs), but I had always been meaning to get back into it because it's such an interesting and educational read even all these years later. SICP and the Little Schemer were the two books that got me really excited about CS. Recently, my friend and mentor Howard Abrams gifted me his original copy of SICP, with margin notes and everything, from all the way back in 1985. This inspired me to finish what I started and complete the rest of the exercises in the book.
+
+Eventually, I want to write my own compiler, and I think understanding the contents of SICP is a great place to start. But before I get too ahead of myself, I think I should do a quick overview of Chapter 2 since it's been so long. It's important to have a solid base before moving onto the more challenging aspects of CS. So, behold my summary of Chapter 2!
+
+The title of Chapter 2 is /Building Abstractions with Data/. As I've begun to work on more complex code bases, the value of abstraction and black-box modularity has become increasingly clear. Spaghetti code is tolerable for solving something like a LeetCode problem, but it becomes unweildy if you want to build stuff that's actually interesting and complex. 
+
+*** Selectors, constructors and predicates
+Chapter 2 stesses the importance of modularizing selectors, constructors, and predicates when designing programs. In their words, "Constraining the dependence on the representation to a few interface procedures helps us to design programs as well as to modify them, because it allows us to maintain the *flexibility to consider alternate implementations*." It also elucidates the importance of building "abstraction barriers" between the different "levels" of the program. This way, if you change one data representation in your program, you do not have to change the structure of the entire program, but instead just a small part. "We can encourage modular design by providing a library of standard componentstogether with a conventional interface for connecting the components in ﬂexible ways." You can then make a "hierarchy" of data, where data structures themselves are comprised of simpler data structures, and where those simpler data structures are composed of even simpler still data structures, all the way down to the literal ASCII codes that make the world go round.
+
+*** Quoting
+Sometimes, you need the contents of a symbol rather than what that symbol represents. In the English language, we use quotations marks, "", to do this. Similarly, in Lisp, we use this symbol: '. So if 
+
+#begin_src racket
+(define ball 4)
+(eq? ball 4) ; #t
+(not (eq? 'ball 4)) ; #f
+#end_src
+
+Note that "quoting" in Lisp is not a way to represent Strings that can be printed -- that's what "" is for.
+
+*** The Closure Property
+Such operations as ~cons~ or ~+~ satisfy the closure property because "the results of combining things with that operation can themselves be combined using the same operation." Operations with the closure property allow us to create complex hierarchical data structures comprised of simple, modular components.
+
+*** Vertical Abstraction Barriers + Generic Operations
+Sometimes, we have data that are represented in different ways by different parts of the program. The example that the book gives is the polar vs. rectangular representations of complex numbers. Both representations are useful in different circumstances, but they represent the same thing, namely, complex numbers. In such situations, we can erect vertical abstraction barriers in addition to the horizontal ones that deliniate the different levels of a data hierarchy.
+
+*** Sequence Operations: Map, Filter, Accumulate
+You can combine these simple higher-order functions to create complex algorithms.
+#begin_src racket
+; Filter
+(define (filter predicate sequence)
+    (cond ((null? sequence) nil)
+        ((predicate (car sequence))
+        (cons (car sequence)
+              (filter predicate (cdr sequence))))
+        (else (filter predicate (cdr sequence)))))
+
+; Accumulate
+(define (accumulate op initial sequence)
+    (if (null? sequence)
+        initial
+        (op (car sequence)
+            (accumulate op initial (cdr sequence)))))
+
+; Map
+(define (map op sequence)
+    (accumulate (lambda (x y) (cons (op (car y) x)))))
+#end_src
+
+More work to be done.
